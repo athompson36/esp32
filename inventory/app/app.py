@@ -28,6 +28,7 @@ from config import (
     get_openai_api_key,
     get_openai_base_url,
     get_openai_model,
+    REPO_ROOT,
     save_ai_settings,
     get_path_settings,
     save_path_settings,
@@ -39,6 +40,7 @@ from flash_ops import (
     get_flash_devices,
     list_artifacts_and_backups,
     list_serial_ports,
+    list_serial_ports_with_detection,
     restore_flash,
 )
 from project_ops import (
@@ -343,15 +345,22 @@ def _docker_status_message(ok, msg):
 
 @app.route("/api/docker/status")
 def api_docker_status():
-    """Docker daemon status and lab images."""
-    ok, msg = _docker_available()
-    display_msg = _docker_status_message(ok, msg)
-    images = _docker_images() if ok else []
-    return jsonify({
-        "docker_available": ok,
-        "docker_message": display_msg,
-        "images": images,
-    })
+    """Docker daemon status and lab images. Never 500: degrade to docker_available=false on any error."""
+    try:
+        ok, msg = _docker_available()
+        display_msg = _docker_status_message(ok, msg)
+        images = _docker_images() if ok else []
+        return jsonify({
+            "docker_available": ok,
+            "docker_message": display_msg,
+            "images": images,
+        })
+    except Exception as e:
+        return jsonify({
+            "docker_available": False,
+            "docker_message": str(e)[:200],
+            "images": [],
+        })
 
 
 @app.route("/api/docker/containers")
@@ -623,9 +632,13 @@ def ai_query_stream():
 
 @app.route("/api/flash/ports")
 def api_flash_ports():
-    """List serial ports for device connection."""
+    """List serial ports. Query ?detect=1 to auto-detect chip on each port (slower)."""
     try:
-        return jsonify({"ports": list_serial_ports()})
+        if request.args.get("detect") == "1":
+            ports = list_serial_ports_with_detection(timeout_per_port=4)
+        else:
+            ports = list_serial_ports()
+        return jsonify({"ports": ports})
     except Exception as e:
         return jsonify({"error": str(e), "ports": []}), 500
 

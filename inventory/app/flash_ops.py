@@ -12,38 +12,111 @@ from config import ARTIFACTS_DIR, BACKUPS_DIR, FLASH_DEVICES, REPO_ROOT
 
 
 def list_serial_ports():
-    """Return list of { port, description } using pyserial or esptool."""
+    """Return list of { port, description } using pyserial or filesystem fallback."""
     try:
         import serial.tools.list_ports
         ports = list(serial.tools.list_ports.comports())
         return [{"port": p.device, "description": p.description or p.device} for p in ports]
     except ImportError:
         pass
-    try:
-        out = subprocess.run(
-            ["esptool.py", "--chip", "esp32", "read_mac"],
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
     # Fallback: common patterns
     candidates = []
     for base in ["/dev/cu.usb", "/dev/tty.usb", "/dev/ttyUSB", "/dev/ttyACM"]:
-        if os.path.isdir(os.path.dirname(base)):
+        parent = os.path.dirname(base)
+        if os.path.isdir(parent):
             try:
-                for name in os.listdir(os.path.dirname(base)):
-                    if base.split("/")[-1] in name:
-                        candidates.append(os.path.join(os.path.dirname(base), name))
+                for name in os.listdir(parent):
+                    if (base.split("/")[-1] in name or "usbserial" in name.lower() or "usbmodem" in name.lower()):
+                        candidates.append(os.path.join(parent, name))
             except OSError:
                 pass
-    return [{"port": p, "description": p} for p in sorted(candidates)]
+    return [{"port": p, "description": p} for p in sorted(set(candidates))]
 
 
 def get_flash_devices():
-    """Return FLASH_DEVICES for API."""
-    return dict(FLASH_DEVICES)
+    """Return list of device dicts for API: { id, chip, flash_size, description }."""
+    return [{"id": did, **dict(d)} for did, d in FLASH_DEVICES.items()]
+
+
+def _chip_from_esptool_output(text):
+    """Parse 'Chip is ESP32-S3 (revision 0)' or similar from esptool stdout/stderr. Returns lowercase chip name e.g. esp32s3."""
+    if not text:
+        return None
+    import re
+    m = re.search(r"Chip is (ESP32[^\s\(]*(?:\s*\([^)]*\))?)", text, re.IGNORECASE)
+    if not m:
+        return None
+    chip = m.group(1).strip().split("(")[0].strip().lower().replace("-", "")
+    # Normalize to esptool --chip values
+    if chip.startswith("esp32s3"):
+        return "esp32s3"
+    if chip.startswith("esp32s2"):
+        return "esp32s2"
+    if chip.startswith("esp32c3") or chip.startswith("esp32c6"):
+        return "esp32c3"  # esptool uses esp32c3 for C3/C6
+    if chip.startswith("esp32"):
+        return "esp32"
+    return chip
+
+
+def detect_chip_on_port(port, timeout=5):
+    """
+    Run esptool read_mac on port to detect chip type. Returns (chip, error_message).
+    chip is lowercase e.g. esp32s3, or None if detection failed.
+    """
+    for cmd in ("esptool", "esptool.py"):
+        try:
+            out = subprocess.run(
+                [cmd, "--port", port, "read_mac"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            combined = (out.stdout or "") + (out.stderr or "")
+            chip = _chip_from_esptool_output(combined)
+            if chip:
+                return chip, None
+            if out.returncode != 0 and combined.strip():
+                return None, combined.strip()[:200]
+            return None, "Could not detect chip"
+        except FileNotFoundError:
+            continue
+        except subprocess.TimeoutExpired:
+            return None, "Timeout"
+        except Exception as e:
+            return None, str(e)[:200]
+    return None, "esptool not found"
+
+
+def list_serial_ports_with_detection(timeout_per_port=4):
+    """
+    List ports and, for each, try to detect connected chip. Returns list of
+    { port, description, chip, suggested_device_ids }.
+    suggested_device_ids: list of device_id from FLASH_DEVICES that use this chip (user can pick).
+    """
+    ports = list_serial_ports()
+    chip_to_devices = {}
+    for device_id, dev in FLASH_DEVICES.items():
+        c = (dev.get("chip") or "").lower()
+        if c:
+            chip_to_devices.setdefault(c, []).append(device_id)
+
+    result = []
+    for p in ports:
+        port = p.get("port") or p.get("description") or ""
+        if not port:
+            continue
+        desc = p.get("description") or port
+        chip, err = detect_chip_on_port(port, timeout=timeout_per_port)
+        suggested = list(chip_to_devices.get(chip, [])) if chip else []
+        result.append({
+            "port": port,
+            "description": desc,
+            "chip": chip,
+            "detection_error": err if not chip else None,
+            "suggested_device_ids": suggested,
+        })
+    return result
 
 
 def _esptool(*args, timeout=120):

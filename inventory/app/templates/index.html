@@ -124,9 +124,9 @@
   <section class="flash-section" id="flash-section">
     <div class="flash-heading-row">
       <h2 class="flash-heading">Backup / Restore / Flash</h2>
-      <button type="button" id="btn-flash-refresh" class="btn-refresh">Refresh ports</button>
+      <button type="button" id="btn-flash-refresh" class="btn-refresh">Refresh &amp; detect devices</button>
     </div>
-    <p class="flash-note">Firmware and settings: backup to .bin, restore from .bin, or flash a build. Device must be connected via USB; <strong>esptool</strong> must be installed on the host.</p>
+    <p class="flash-note">Firmware and settings: backup to .bin, restore from .bin, or flash a build. Click <strong>Refresh &amp; detect devices</strong> to auto-detect connected ESP32 boards (port and chip). Device must be connected via USB; <strong>esptool</strong> must be installed on the host.</p>
     <div class="flash-sd-note" role="note">SD card: devices with an SD slot (e.g. T-Beam) are not backed up or restored through this interface. Remove the card and use host tools (e.g. disk image / dd) to image or restore the SD.</div>
     <div class="flash-controls">
       <div class="flash-row">
@@ -134,6 +134,7 @@
         <select id="flash-port">
           <option value="">— Select port —</option>
         </select>
+        <span id="flash-detect-status" class="flash-status" aria-live="polite"></span>
         <label for="flash-device">Device</label>
         <select id="flash-device">
           <option value="">— Select device —</option>

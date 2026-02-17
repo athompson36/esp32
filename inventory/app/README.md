@@ -83,6 +83,18 @@ docker run --rm -p 5050:5050 -v "$(pwd):/workspace" -e REPO_ROOT=/workspace inve
 
 ---
 
+## E2E tests
+
+With the app running (local or Docker), run all endpoint checks from repo root:
+
+```bash
+python inventory/app/e2e_test.py http://127.0.0.1:5050
+```
+
+Covers: `/`, settings, categories, items, Docker status/tools, updates, flash, projects (CRUD + exports). Exit code 0 = all passed.
+
+---
+
 ## Optional: AI answers
 
 Set `OPENAI_API_KEY` so the **AI query** box can return a short natural-language answer and re-ranked item list:

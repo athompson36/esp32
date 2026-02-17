@@ -481,28 +481,51 @@
   const btnDockerContainersRefresh = document.getElementById("btn-docker-containers-refresh");
   if (btnDockerContainersRefresh) btnDockerContainersRefresh.addEventListener("click", loadDockerContainers);
 
-  function loadFlashPorts() {
+  function loadFlashPorts(detect) {
     const sel = document.getElementById("flash-port");
+    const deviceSel = document.getElementById("flash-device");
+    const statusEl = document.getElementById("flash-detect-status");
     if (!sel) return;
-    fetch("/api/flash/ports")
+    const url = "/api/flash/ports" + (detect ? "?detect=1" : "");
+    if (detect && statusEl) { statusEl.textContent = "Detecting…"; statusEl.className = "flash-status"; }
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
         const ports = data.ports || [];
-        sel.innerHTML = '<option value="">— Select port —</option>' + ports.map((p) => '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + "</option>").join("");
+        const portValue = (p) => (typeof p === "string" ? p : (p && p.port)) || "";
+        const portLabel = (p) => {
+          if (typeof p === "string") return p;
+          if (!p) return "";
+          let label = p.description || p.port || "";
+          if (p.chip) label += " — " + p.chip.toUpperCase();
+          if (p.suggested_device_ids && p.suggested_device_ids.length) label += " (" + p.suggested_device_ids[0] + ")";
+          return label;
+        };
+        sel.innerHTML = '<option value="">— Select port —</option>' + ports.map((p) => '<option value="' + escapeHtml(portValue(p)) + '">' + escapeHtml(portLabel(p)) + "</option>").join("");
+        if (detect && deviceSel && ports.length) {
+          const detected = ports.find((p) => p.suggested_device_ids && p.suggested_device_ids.length);
+          if (detected && detected.suggested_device_ids) {
+            sel.value = portValue(detected);
+            loadFlashDevices().then(() => {
+              if (deviceSel && detected.suggested_device_ids[0]) deviceSel.value = detected.suggested_device_ids[0];
+            });
+          }
+        }
+        if (statusEl) { statusEl.textContent = ""; }
       })
-      .catch(() => { sel.innerHTML = '<option value="">— Select port —</option>'; });
+      .catch(() => { sel.innerHTML = '<option value="">— Select port —</option>'; if (statusEl) statusEl.textContent = ""; });
   }
 
   function loadFlashDevices() {
     const sel = document.getElementById("flash-device");
-    if (!sel) return;
-    fetch("/api/flash/devices")
+    if (!sel) return Promise.resolve();
+    return fetch("/api/flash/devices")
       .then((r) => r.json())
       .then((data) => {
-        const devices = data.devices || [];
-        sel.innerHTML = '<option value="">— Select device —</option>' + devices.map((d) => '<option value="' + escapeHtml(d.id) + '">' + escapeHtml(d.id + " — " + (d.description || d.chip || "")) + "</option>").join("");
+        const devices = Array.isArray(data.devices) ? data.devices : Object.entries(data.devices || {}).map(([id, d]) => ({ id, ...d }));
+        sel.innerHTML = '<option value="">— Select device —</option>' + devices.map((d) => '<option value="' + escapeHtml(d.id) + '">' + escapeHtml((d.id || "") + " — " + (d.description || d.chip || "")) + "</option>").join("");
       })
-      .catch(() => { sel.innerHTML = '<option value="">— Select device —</option>'; });
+      .catch(() => { sel.innerHTML = '<option value="">— Select device —</option>'; return Promise.resolve(); });
   }
 
   function loadFlashArtifacts() {
@@ -512,8 +535,8 @@
     fetch("/api/flash/artifacts")
       .then((r) => r.json())
       .then((data) => {
-        const list = data.artifacts || [];
-        const opts = '<option value="">— Select file or upload —</option>' + list.map((a) => '<option value="' + escapeHtml(a.path) + '">' + escapeHtml(a.name) + (a.type ? " (" + a.type + ")" : "") + "</option>").join("");
+        const list = data.files || data.artifacts || [];
+        const opts = '<option value="">— Select file or upload —</option>' + list.map((a) => '<option value="' + escapeHtml(a.path) + '">' + escapeHtml(a.name + (a.type ? " (" + a.type + ")" : "")) + "</option>").join("");
         restoreSel.innerHTML = opts;
         flashSel.innerHTML = opts;
       })
@@ -648,7 +671,7 @@
   const btnFlashRefresh = document.getElementById("btn-flash-refresh");
   if (btnFlashRefresh) {
     btnFlashRefresh.addEventListener("click", () => {
-      loadFlashPorts();
+      loadFlashPorts(true);
       loadFlashArtifacts();
     });
   }
@@ -976,7 +999,7 @@
   loadPathSettings();
   loadDockerStatus();
   loadDockerContainers();
-  loadFlashPorts();
+  loadFlashPorts(false);
   loadFlashDevices();
   loadFlashArtifacts();
   loadProjectsList();
