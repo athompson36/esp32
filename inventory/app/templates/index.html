@@ -130,7 +130,10 @@
       <h2 class="flash-heading">Backup / Restore / Flash</h2>
       <button type="button" id="btn-flash-refresh" class="btn-refresh">Refresh &amp; detect devices</button>
     </div>
-    <p class="flash-note">All flashing is <strong>internal</strong> (this app, esptool) and <strong>launcher/firmware compatible</strong> based on your selection. Backup to .bin, restore from .bin, or flash a build. Choose a <strong>Firmware target</strong> to filter artifacts (Meshtastic, MeshCore, Launcher). Click <strong>Refresh &amp; detect devices</strong> to auto-detect connected ESP32 boards (port and chip). Device must be connected via USB; <strong>esptool</strong> must be installed on the host.</p>
+    <div id="flash-docker-notice" class="flash-docker-notice" role="alert" hidden>
+      <strong>Ports not available (app is running in Docker).</strong> To see your T-Beam and use Backup/Flash, run the app on your Mac from the repo root: <code>python inventory/app/app.py</code> then open <a href="http://127.0.0.1:5050" target="_blank" rel="noopener">http://127.0.0.1:5050</a>. Install esptool if needed: <code>pip install esptool</code>.
+    </div>
+    <p class="flash-note">All flashing is <strong>internal</strong> (this app, esptool) and <strong>launcher/firmware compatible</strong> based on your selection. Backup to .bin, restore from .bin, or flash a build. Choose a <strong>Firmware target</strong> to filter artifacts (Meshtastic, MeshCore, Launcher). Click <strong>Refresh &amp; detect devices</strong> to auto-detect connected ESP32 boards (port and chip). Device must be connected via USB; <strong>esptool</strong> must be installed on the host. <strong>T-Beam 1W / ESP32-S3:</strong> if the board is not detected, put it in bootloader mode (hold BOOT, press RESET, release BOOT) then click Refresh again.</p>
     <div class="flash-sd-note" role="note">SD card: devices with an SD slot (e.g. T-Beam) are not backed up or restored through this interface. Remove the card and use host tools (e.g. disk image / dd) to image or restore the SD.</div>
     <div class="flash-controls">
       <div class="flash-row">
@@ -151,7 +154,63 @@
           <option value="launcher">Launcher</option>
         </select>
       </div>
+
+      <section class="flash-build-section" id="flash-build-section" aria-labelledby="flash-build-heading">
+        <h3 id="flash-build-heading" class="flash-build-heading">Firmware build</h3>
+        <p class="flash-internal-note">Build from source with PlatformIO. Output is saved to artifacts and appears in the Flash list. Optionally flash to device after build.</p>
+        <div class="flash-build-options">
+          <div class="flash-row">
+            <label for="flash-build-device">Device</label>
+            <select id="flash-build-device">
+              <option value="">— Select —</option>
+            </select>
+            <label for="flash-build-firmware">Firmware</label>
+            <select id="flash-build-firmware">
+              <option value="">— Select —</option>
+            </select>
+            <label for="flash-build-env">Env</label>
+            <select id="flash-build-env">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="flash-row flash-patches-row" id="flash-build-patches-row">
+            <label>Patches (optional)</label>
+            <div id="flash-build-patches" class="flash-patches-list" aria-describedby="flash-patches-note">—</div>
+          </div>
+          <p id="flash-patches-note" class="flash-internal-note">Select patches to apply before building. Applied in order; tree is reverted after build.</p>
+          <div class="flash-row flash-build-opts-row">
+            <label class="flash-check-label"><input type="checkbox" id="flash-build-clean" value="1"> Clean before build</label>
+            <label class="flash-check-label"><input type="checkbox" id="flash-build-verbose" value="1"> Verbose</label>
+            <label class="flash-check-label"><input type="checkbox" id="flash-build-flash-after" value="1"> Flash after build</label>
+            <label for="flash-build-timeout">Timeout (s)</label>
+            <input type="number" id="flash-build-timeout" class="flash-input flash-input-num" min="60" max="3600" value="300" title="Build timeout in seconds">
+          </div>
+          <div class="flash-row">
+            <button type="button" id="btn-flash-build">Build</button>
+            <span id="flash-build-status" class="flash-status"></span>
+          </div>
+        </div>
+      </section>
+
       <div class="flash-actions">
+        <div class="flash-action-block">
+          <h3>Get release / OTA</h3>
+          <p class="flash-internal-note">Download a .bin from a GitHub release (e.g. Meshtastic, MeshCore) into artifacts for flashing.</p>
+          <div class="flash-row">
+            <label for="flash-download-repo">Repo</label>
+            <select id="flash-download-repo">
+              <option value="">— Select —</option>
+              <option value="meshtastic/firmware">meshtastic/firmware</option>
+              <option value="meshcore-dev/MeshCore">meshcore-dev/MeshCore</option>
+            </select>
+            <label for="flash-download-tag">Tag (blank = latest)</label>
+            <input type="text" id="flash-download-tag" placeholder="latest" class="flash-input">
+            <label for="flash-download-filter">Asset filter (e.g. tbeam)</label>
+            <input type="text" id="flash-download-filter" placeholder="tbeam" class="flash-input">
+            <button type="button" id="btn-flash-download">Download</button>
+          </div>
+          <span id="flash-download-status" class="flash-status"></span>
+        </div>
         <div class="flash-action-block">
           <h3>Backup</h3>
           <select id="flash-backup-type">
@@ -197,10 +256,18 @@
     <p class="projects-note">Develop an idea with the AI; it will suggest a BOM and, for circuits, pinouts, wiring, schematic notes, and enclosure/CAD notes. Export BOM for Digi-Key or Mouser; export pinout/wiring as CSV and schematic/enclosure as markdown for PCBs and 3D printing.</p>
     <div class="projects-controls">
       <div class="projects-row">
+        <label for="project-controller">Controller</label>
+        <select id="project-controller">
+          <option value="">— Select —</option>
+        </select>
         <label for="project-select">Saved project</label>
         <select id="project-select">
           <option value="">— New or select —</option>
         </select>
+      </div>
+      <div class="project-templates-wrap" id="project-templates-wrap" hidden>
+        <h3 class="project-templates-heading">Common templates</h3>
+        <div id="project-templates-list" class="project-templates-list"></div>
       </div>
       <div class="project-editor" id="project-editor">
         <div class="project-meta">
@@ -222,6 +289,7 @@
             <button type="button" id="btn-project-check-inv">Check inventory</button>
             <a id="btn-bom-digikey" href="#" class="btn-link" download="bom_digikey.csv">Export for Digi-Key</a>
             <a id="btn-bom-mouser" href="#" class="btn-link" download="bom_mouser.csv">Export for Mouser</a>
+            <span id="project-cost-summary" class="project-cost-summary" aria-live="polite"></span>
           </div>
           <div class="project-bom-table-wrap">
             <table class="project-bom-table" id="project-bom-table">
@@ -230,6 +298,8 @@
                   <th>Name</th>
                   <th>Part #</th>
                   <th>Qty</th>
+                  <th>Unit price</th>
+                  <th>Line total</th>
                   <th>On hand</th>
                   <th>Shortfall</th>
                   <th>Actions</th>

@@ -434,6 +434,25 @@ button:hover {
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
+.flash-docker-notice {
+  margin: 0 0 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: #fef3cd;
+  border: 1px solid #e0c040;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #856404;
+}
+.flash-docker-notice code {
+  background: rgba(0,0,0,0.06);
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.flash-docker-notice a {
+  color: #533f03;
+  text-decoration: underline;
+}
 .flash-internal-note {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -462,6 +481,17 @@ button:hover {
   color: var(--text);
   font-size: 0.875rem;
   min-width: 180px;
+}
+.flash-row .flash-input {
+  padding: 0.4rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.875rem;
+  width: 8rem;
+  max-width: 100%;
+  min-width: 100px;
 }
 .flash-actions {
   display: flex;
@@ -509,6 +539,64 @@ button:hover {
 .flash-status.flash-error {
   color: var(--warning);
 }
+.flash-patches-row {
+  align-items: flex-start;
+}
+.flash-patches-row > label {
+  flex-shrink: 0;
+}
+.flash-patches-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+.flash-patches-list .flash-patch-check {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.flash-build-section {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.flash-build-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.flash-build-section .flash-internal-note {
+  margin: 0 0 0.75rem 0;
+}
+.flash-build-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.flash-build-opts-row {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.flash-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.flash-check-label input[type="checkbox"] {
+  margin: 0;
+}
+.flash-input-num {
+  width: 4.5rem;
+}
 
 .projects-section {
   margin-bottom: 1.5rem;
@@ -555,6 +643,52 @@ button:hover {
   color: var(--text);
   font-size: 0.875rem;
   min-width: 220px;
+}
+.project-templates-wrap {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.project-templates-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.project-templates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.project-template-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  max-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.project-template-card:hover {
+  border-color: var(--text-muted);
+  background: var(--bg);
+}
+.project-template-card strong {
+  font-size: 0.875rem;
+}
+.project-template-desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  line-height: 1.3;
 }
 .project-editor {
   display: flex;
@@ -896,6 +1030,27 @@ button:hover {
 .project-bom-actions .btn-link:hover {
   background: var(--border);
 }
+.project-cost-summary {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.project-cost-summary-visible {
+  font-weight: 600;
+  color: var(--text);
+}
+.project-bom-table .bom-unit-price {
+  width: 5rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8125rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.project-bom-table .bom-line-total {
+  white-space: nowrap;
+  color: var(--text-muted);
+}
 .project-bom-table-wrap {
   overflow-x: auto;
   max-height: 200px;
@@ -1083,6 +1238,91 @@ button:hover {
 .detail-panel[hidden] {
   display: none;
 }
+.detail-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.detail-head-row h2 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.detail-edit-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.detail-edit-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+.detail-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.detail-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.detail-edit-field label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.detail-edit-field input,
+.detail-edit-field textarea {
+  padding: 0.4rem 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+.detail-edit-field textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+.detail-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.detail-save-btn,
+.detail-cancel-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.detail-save-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+}
+.detail-save-btn:hover {
+  opacity: 0.9;
+}
+.detail-cancel-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.detail-cancel-btn:hover {
+  background: var(--border);
+}
 .detail-add-to-project {
   margin-top: 1.25rem;
   padding-top: 1rem;
@@ -1097,15 +1337,24 @@ button:hover {
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
+.detail-add-to-project-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.25rem;
+}
 .detail-add-to-project select,
 .detail-add-to-project input[type="number"] {
-  margin-right: 0.5rem;
   padding: 0.35rem 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text);
   font-size: 0.8125rem;
+}
+.detail-add-to-project-row select {
+  min-width: 140px;
 }
 .detail-add-to-project button {
   padding: 0.35rem 0.75rem;
@@ -1115,6 +1364,14 @@ button:hover {
   border-radius: 4px;
   font-size: 0.8125rem;
   cursor: pointer;
+}
+.detail-add-to-project button:last-of-type {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.detail-add-to-project button:last-of-type:hover {
+  background: var(--border);
 }
 .detail-add-to-project .flash-status {
   margin-left: 0.5rem;

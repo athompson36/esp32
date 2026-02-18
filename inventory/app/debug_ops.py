@@ -178,9 +178,9 @@ def run_health_checks() -> dict:
     suggestions = []
 
     # Esptool
-    ok, msg = run_esptool_version()
-    checks.append({"name": "esptool", "ok": ok, "message": msg[:200]})
-    if not ok:
+    ok_esptool, msg = run_esptool_version()
+    checks.append({"name": "esptool", "ok": ok_esptool, "message": msg[:200]})
+    if not ok_esptool:
         problems.append("esptool not installed or not in PATH")
         suggestions.append("Install esptool: pip install esptool")
 
@@ -197,7 +197,7 @@ def run_health_checks() -> dict:
         problems.append("Failed to list serial ports")
         suggestions.append("Install pyserial: pip install pyserial")
 
-    # Chip detection on first port (optional)
+    # Chip detection on first port (optional; only report as problem if esptool is available)
     try:
         ports = list_serial_ports()
         if ports:
@@ -208,8 +208,9 @@ def run_health_checks() -> dict:
                     checks.append({"name": "chip_detect", "ok": True, "message": f"{port}: {chip}"})
                 else:
                     checks.append({"name": "chip_detect", "ok": False, "message": f"{port}: {err or 'unknown'}"})
-                    if err and "not found" not in err.lower():
+                    if ok_esptool and err and "not found" not in err.lower():
                         problems.append(f"Chip detection failed on {port}: {err}")
+                        suggestions.append("Connect an ESP32 in bootloader mode (hold BOOT, press RESET) or try another USB port/cable")
     except Exception as e:
         checks.append({"name": "chip_detect", "ok": False, "message": str(e)[:200]})
 

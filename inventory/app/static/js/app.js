@@ -38,6 +38,11 @@
       loadManufacturers();
       fetchItems(buildInventoryQueryParams());
     }
+    if (tabId === "flash") {
+      loadFlashPorts(false);
+      loadFlashDevices();
+      loadFlashBuildConfig();
+    }
   }
 
   function initTabs() {
@@ -280,7 +285,102 @@
   setupVoiceInput(aiQueryEl, document.getElementById("btn-ai-voice"));
   setupVoiceInput(document.getElementById("project-message"), document.getElementById("btn-project-voice"));
 
+  function showDetailEditForm(item) {
+    const id = item.id;
+    const catOpts = (window._detailCategories || []).map((c) => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>").join("");
+    detailContent.innerHTML = `
+      <div class="detail-head-row">
+        <h2>Edit item</h2>
+      </div>
+      <form id="detail-edit-form" class="detail-edit-form">
+        <input type="hidden" name="id" value="${escapeHtml(id)}">
+        <div class="detail-edit-field">
+          <label for="detail-edit-name">Name</label>
+          <input type="text" id="detail-edit-name" name="name" value="${escapeHtml(item.name || "")}" required>
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-category">Category</label>
+          <input type="text" id="detail-edit-category" name="category" list="detail-edit-category-list" value="${escapeHtml(item.category || "")}" required>
+          <datalist id="detail-edit-category-list">${catOpts}</datalist>
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-quantity">Quantity</label>
+          <input type="number" id="detail-edit-quantity" name="quantity" min="0" value="${item.quantity != null ? item.quantity : 1}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-manufacturer">Manufacturer</label>
+          <input type="text" id="detail-edit-manufacturer" name="manufacturer" value="${escapeHtml(item.manufacturer || "")}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-part_number">Part #</label>
+          <input type="text" id="detail-edit-part_number" name="part_number" value="${escapeHtml(item.part_number || "")}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-model">Model</label>
+          <input type="text" id="detail-edit-model" name="model" value="${escapeHtml(item.model || "")}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-location">Location</label>
+          <input type="text" id="detail-edit-location" name="location" value="${escapeHtml(item.location || "")}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-datasheet_url">Datasheet URL</label>
+          <input type="url" id="detail-edit-datasheet_url" name="datasheet_url" value="${escapeHtml(item.datasheet_url || "")}">
+        </div>
+        <div class="detail-edit-field">
+          <label for="detail-edit-notes">Notes</label>
+          <textarea id="detail-edit-notes" name="notes" rows="3">${escapeHtml(item.notes || "")}</textarea>
+        </div>
+        <div class="detail-edit-actions">
+          <button type="submit" class="detail-save-btn">Save</button>
+          <button type="button" class="detail-cancel-btn" id="detail-edit-cancel">Cancel</button>
+          <span id="detail-edit-status" class="flash-status"></span>
+        </div>
+      </form>
+    `;
+    document.getElementById("detail-edit-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const statusEl = document.getElementById("detail-edit-status");
+      const payload = {
+        name: document.getElementById("detail-edit-name").value.trim(),
+        category: (document.getElementById("detail-edit-category").value || "").trim(),
+        quantity: parseInt(document.getElementById("detail-edit-quantity").value, 10) || 0,
+        manufacturer: (document.getElementById("detail-edit-manufacturer").value || "").trim(),
+        part_number: (document.getElementById("detail-edit-part_number").value || "").trim(),
+        model: (document.getElementById("detail-edit-model").value || "").trim(),
+        location: (document.getElementById("detail-edit-location").value || "").trim(),
+        datasheet_url: (document.getElementById("detail-edit-datasheet_url").value || "").trim(),
+        notes: (document.getElementById("detail-edit-notes").value || "").trim(),
+      };
+      if (!payload.name || !payload.category) {
+        if (statusEl) { statusEl.textContent = "Name and category required."; statusEl.className = "flash-status flash-error"; }
+        return;
+      }
+      if (statusEl) { statusEl.textContent = "Saving…"; statusEl.className = "flash-status"; }
+      fetch("/api/items/" + encodeURIComponent(id), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) throw new Error(data.error);
+          if (statusEl) { statusEl.textContent = "Saved."; statusEl.className = "flash-status flash-ok"; }
+          openDetail(id);
+          fetchItems(buildInventoryQueryParams());
+        })
+        .catch((err) => {
+          if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
+        });
+    });
+    document.getElementById("detail-edit-cancel").addEventListener("click", () => openDetail(id));
+  }
+
   function openDetail(id) {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => { window._detailCategories = data.categories || []; })
+      .catch(() => { window._detailCategories = []; });
     fetch("/api/items/" + encodeURIComponent(id))
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
@@ -295,7 +395,10 @@
         const usedInStr = item.used_in && item.used_in.length ? item.used_in.join(", ") : "—";
         const qty = item.quantity != null ? item.quantity : 1;
         detailContent.innerHTML = `
-          <h2>${escapeHtml(item.name)}</h2>
+          <div class="detail-head-row">
+            <h2>${escapeHtml(item.name)}</h2>
+            <button type="button" class="detail-edit-btn" id="detail-edit-btn" data-item-id="${escapeHtml(item.id)}">Edit</button>
+          </div>
           <dl>
             <dt>ID</dt><dd><code>${escapeHtml(item.id)}</code></dd>
             <dt>Category</dt><dd>${escapeHtml(item.category)}</dd>
@@ -313,10 +416,13 @@
           <div class="detail-add-to-project" id="detail-add-to-project">
             <h3>Add to project</h3>
             <p class="detail-add-hint">Add this item to a project&rsquo;s BOM.</p>
-            <select id="detail-add-to-project-select"><option value="">Select project…</option></select>
-            <label for="detail-add-to-project-qty">Qty</label>
-            <input type="number" id="detail-add-to-project-qty" min="1" value="${qty}">
-            <button type="button" id="detail-add-to-project-btn">Add to project</button>
+            <div class="detail-add-to-project-row">
+              <select id="detail-add-to-project-select"><option value="">Select project…</option></select>
+              <label for="detail-add-to-project-qty">Qty</label>
+              <input type="number" id="detail-add-to-project-qty" min="1" value="${qty}">
+              <button type="button" id="detail-add-to-project-btn">Add to project</button>
+              <button type="button" id="detail-add-to-new-project-btn">Add to new project</button>
+            </div>
             <span id="detail-add-to-project-status" class="flash-status"></span>
           </div>
         `;
@@ -356,6 +462,44 @@
               if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
             });
         });
+        document.getElementById("detail-add-to-new-project-btn").addEventListener("click", () => {
+          const qtyInput = document.getElementById("detail-add-to-project-qty");
+          const quantity = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+          const newTitle = (item.name && item.name.trim()) ? item.name.trim() + " project" : "New project";
+          statusEl.textContent = "Creating project…";
+          statusEl.className = "flash-status";
+          fetch("/api/projects", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: newTitle, description: "", parts_bom: [], conversation: [] }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.error) throw new Error(data.error);
+              const newId = data.id;
+              const projectTitle = (data.project && data.project.title) ? data.project.title : newTitle;
+              return fetch("/api/projects/" + encodeURIComponent(newId) + "/bom/items", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ item_id: item.id, quantity }),
+              }).then((r) => r.json()).then((bomData) => {
+                if (bomData.error) throw new Error(bomData.error);
+                return { newId, projectTitle };
+              });
+            })
+            .then(({ newId, projectTitle }) => {
+              const opt = document.createElement("option");
+              opt.value = newId;
+              opt.textContent = projectTitle;
+              opt.selected = true;
+              sel.appendChild(opt);
+              if (statusEl) { statusEl.textContent = "Created project and added item."; statusEl.className = "flash-status flash-ok"; }
+            })
+            .catch((err) => {
+              if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
+            });
+        });
+        document.getElementById("detail-edit-btn")?.addEventListener("click", () => showDetailEditForm(item));
         detailPanel.hidden = false;
       })
       .catch(() => {
@@ -611,7 +755,21 @@
             });
           }
         }
-        if (statusEl) { statusEl.textContent = ""; }
+        const noticeEl = document.getElementById("flash-docker-notice");
+        if (noticeEl) {
+          noticeEl.hidden = !data.in_container_no_usb;
+        }
+        if (statusEl) {
+          if (data.in_container_no_usb && ports.length === 0) {
+            statusEl.textContent = "Serial/USB not available (app is in Docker). Run on host for backup/flash.";
+            statusEl.className = "flash-status flash-error";
+          } else if (detect && ports.length === 0) {
+            statusEl.textContent = "No ports found. Connect T-Beam via USB; put in bootloader (hold BOOT, press RESET) then Refresh again.";
+            statusEl.className = "flash-status";
+          } else {
+            statusEl.textContent = "";
+          }
+        }
       })
       .catch(() => { sel.innerHTML = '<option value="">— Select port —</option>'; if (statusEl) statusEl.textContent = ""; });
   }
@@ -646,6 +804,91 @@
       .catch(() => {
         restoreSel.innerHTML = flashSel.innerHTML = '<option value="">— Select file or upload —</option>';
       });
+  }
+
+  let flashBuildConfig = [];
+  (function initFlashBuildDropdowns() {
+    const deviceSel = document.getElementById("flash-build-device");
+    const firmwareSel = document.getElementById("flash-build-firmware");
+    const envSel = document.getElementById("flash-build-env");
+    if (!deviceSel || !firmwareSel || !envSel) return;
+    deviceSel.addEventListener("change", () => {
+      const did = deviceSel.value;
+      const builds = flashBuildConfig.filter((b) => b.device_id === did);
+      firmwareSel.innerHTML = '<option value="">— Select —</option>' + builds.map((b) => '<option value="' + escapeHtml(b.firmware_id) + '">' + escapeHtml(b.firmware_id) + "</option>").join("");
+      envSel.innerHTML = "<option value=\"\">— Select —</option>";
+      if (builds[0] && builds[0].envs && builds[0].envs.length) {
+        envSel.innerHTML += builds[0].envs.map((e) => '<option value="' + escapeHtml(e) + '">' + escapeHtml(e) + "</option>").join("");
+      }
+    });
+    firmwareSel.addEventListener("change", () => {
+      const did = deviceSel.value;
+      const fid = firmwareSel.value;
+      const b = flashBuildConfig.find((x) => x.device_id === did && x.firmware_id === fid);
+      envSel.innerHTML = "<option value=\"\">— Select —</option>";
+      if (b && b.envs && b.envs.length) {
+        envSel.innerHTML += b.envs.map((e) => '<option value="' + escapeHtml(e) + '">' + escapeHtml(e) + "</option>").join("");
+      }
+      loadFlashPatches(did, fid);
+    });
+    deviceSel.addEventListener("change", () => {
+      const did = deviceSel.value;
+      const fid = firmwareSel.value;
+      if (did && fid) loadFlashPatches(did, fid);
+    });
+  })();
+
+  function loadFlashPatches(deviceId, firmwareId) {
+    const container = document.getElementById("flash-build-patches");
+    if (!container) return;
+    if (!deviceId || !firmwareId) {
+      container.innerHTML = "—";
+      container.replaceChildren();
+      return;
+    }
+    container.innerHTML = "Loading…";
+    fetch("/api/flash/patches?device_id=" + encodeURIComponent(deviceId) + "&firmware_id=" + encodeURIComponent(firmwareId))
+      .then((r) => r.json())
+      .then((data) => {
+        const patches = data.patches || [];
+        container.innerHTML = "";
+        if (patches.length === 0) {
+          container.appendChild(document.createTextNode("None"));
+          return;
+        }
+        patches.forEach((p) => {
+          const label = document.createElement("label");
+          label.className = "flash-patch-check";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.name = "flash-patch";
+          cb.value = p.path;
+          cb.setAttribute("data-patch-path", p.path);
+          label.appendChild(cb);
+          label.appendChild(document.createTextNode(" " + (p.name || p.path)));
+          container.appendChild(label);
+        });
+      })
+      .catch(() => {
+        container.innerHTML = "";
+        container.appendChild(document.createTextNode("Error loading patches"));
+      });
+  }
+  function loadFlashBuildConfig() {
+    return fetch("/api/flash/build-config")
+      .then((r) => r.json())
+      .then((data) => {
+        flashBuildConfig = data.builds || [];
+        const deviceSel = document.getElementById("flash-build-device");
+        const firmwareSel = document.getElementById("flash-build-firmware");
+        const envSel = document.getElementById("flash-build-env");
+        if (!deviceSel || !firmwareSel || !envSel) return;
+        const devices = [...new Set(flashBuildConfig.map((b) => b.device_id))];
+        deviceSel.innerHTML = '<option value="">— Select —</option>' + devices.map((d) => '<option value="' + escapeHtml(d) + '">' + escapeHtml(d) + "</option>").join("");
+        if (devices.length) { deviceSel.value = devices[0]; deviceSel.dispatchEvent(new Event("change")); }
+        if (deviceSel.value && firmwareSel.value) loadFlashPatches(deviceSel.value, firmwareSel.value);
+      })
+      .catch(() => { flashBuildConfig = []; });
   }
 
   function setFlashStatus(idSuffix, message, isError) {
@@ -770,6 +1013,100 @@
   document.getElementById("btn-flash-backup")?.addEventListener("click", doBackup);
   document.getElementById("btn-flash-restore")?.addEventListener("click", doRestore);
   document.getElementById("btn-flash-flash")?.addEventListener("click", doFlash);
+
+  document.getElementById("btn-flash-build")?.addEventListener("click", () => {
+    const deviceId = document.getElementById("flash-build-device")?.value?.trim();
+    const firmwareId = document.getElementById("flash-build-firmware")?.value?.trim();
+    const envName = document.getElementById("flash-build-env")?.value?.trim();
+    const statusEl = document.getElementById("flash-build-status");
+    if (!deviceId || !firmwareId || !envName) {
+      setFlashStatus("build-status", "Select device, firmware, and env.", true);
+      return;
+    }
+    const patchPaths = [];
+    document.querySelectorAll('#flash-build-patches input[name="flash-patch"]:checked').forEach((cb) => {
+      const v = cb.getAttribute("data-patch-path") || cb.value;
+      if (v) patchPaths.push(v);
+    });
+    const clean = document.getElementById("flash-build-clean")?.checked || false;
+    const verbose = document.getElementById("flash-build-verbose")?.checked || false;
+    const flashAfter = document.getElementById("flash-build-flash-after")?.checked || false;
+    let timeout = parseInt(document.getElementById("flash-build-timeout")?.value, 10);
+    if (!timeout || timeout < 60) timeout = 300;
+    if (timeout > 3600) timeout = 3600;
+    const port = document.getElementById("flash-port")?.value?.trim() || "";
+    const flashDeviceId = document.getElementById("flash-device")?.value?.trim() || "";
+    if (flashAfter && (!port || !flashDeviceId)) {
+      setFlashStatus("build-status", "Select port and device above for Flash after build.", true);
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Building…";
+    const body = {
+      device_id: deviceId,
+      firmware_id: firmwareId,
+      env_name: envName,
+      patch_paths: patchPaths,
+      clean,
+      verbose,
+      timeout,
+      flash_after: flashAfter,
+    };
+    if (flashAfter) {
+      body.port = port;
+      body.flash_device_id = flashDeviceId;
+    }
+    fetch("/api/flash/build", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          let msg = "Built: " + (data.path || "");
+          if (data.flashed) msg = "Built and flashed: " + (data.path || "");
+          else if (data.flash_error) msg = "Built: " + (data.path || "") + ". Flash failed: " + data.flash_error;
+          setFlashStatus("build-status", msg, !!data.flash_error);
+          loadFlashArtifacts();
+        } else {
+          setFlashStatus("build-status", data.error || "Build failed", true);
+        }
+      })
+      .catch((err) => setFlashStatus("build-status", "Error: " + err.message, true));
+  });
+
+  document.getElementById("btn-flash-download")?.addEventListener("click", () => {
+    const repoVal = document.getElementById("flash-download-repo")?.value?.trim();
+    const tag = document.getElementById("flash-download-tag")?.value?.trim() || null;
+    const assetFilter = document.getElementById("flash-download-filter")?.value?.trim() || null;
+    const deviceId = document.getElementById("flash-device")?.value?.trim() || null;
+    const statusEl = document.getElementById("flash-download-status");
+    if (!repoVal || repoVal.indexOf("/") === -1) {
+      setFlashStatus("download-status", "Select a repo (owner/repo).", true);
+      return;
+    }
+    const [owner, repo] = repoVal.split("/").map((s) => s.trim());
+    if (!owner || !repo) {
+      setFlashStatus("download-status", "Invalid repo.", true);
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Downloading…";
+    fetch("/api/flash/download-release", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner, repo, tag, device_id: deviceId, firmware_id: repo, asset_filter: assetFilter }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setFlashStatus("download-status", "Saved: " + (data.path || ""), false);
+          loadFlashArtifacts();
+        } else {
+          setFlashStatus("download-status", data.error || "Download failed", true);
+        }
+      })
+      .catch((err) => setFlashStatus("download-status", "Error: " + err.message, true));
+  });
 
   const btnFlashRefresh = document.getElementById("btn-flash-refresh");
   if (btnFlashRefresh) {
@@ -1080,6 +1417,75 @@
   let currentBom = [];
   let currentMessages = [];
   let currentDesign = { pin_outs: [], wiring: [], schematic: "", enclosure: "" };
+  let projectTemplatesData = { controllers: [], templates_by_controller: {} };
+
+  function loadProjectTemplates() {
+    fetch("/api/projects/templates")
+      .then((r) => r.json())
+      .then((data) => {
+        projectTemplatesData.controllers = data.controllers || [];
+        projectTemplatesData.templates_by_controller = data.templates_by_controller || {};
+        projectTemplatesData.inventory_controller_ids = data.inventory_controller_ids || [];
+        const sel = document.getElementById("project-controller");
+        if (!sel) return;
+        const cur = sel.value;
+        const inInv = projectTemplatesData.inventory_controller_ids || [];
+        const controllers = projectTemplatesData.controllers || [];
+        const ordered = inInv.length
+          ? inInv.map((id) => controllers.find((c) => c.id === id)).filter(Boolean).concat(controllers.filter((c) => !inInv.includes(c.id)))
+          : controllers;
+        sel.innerHTML = '<option value="">— Select —</option>' + ordered.map((c) => '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name || c.id) + (inInv.includes(c.id) ? " ✓" : "") + "</option>").join("");
+        if (cur) sel.value = cur;
+        else if (inInv.length) sel.value = inInv[0];
+        onProjectControllerChange();
+      })
+      .catch(() => {});
+  }
+
+  function onProjectControllerChange() {
+    const controllerId = document.getElementById("project-controller")?.value?.trim() || "";
+    const wrap = document.getElementById("project-templates-wrap");
+    const listEl = document.getElementById("project-templates-list");
+    if (!wrap || !listEl) return;
+    if (!controllerId) {
+      wrap.hidden = true;
+      listEl.innerHTML = "";
+      return;
+    }
+    const templates = projectTemplatesData.templates_by_controller[controllerId] || [];
+    if (templates.length === 0) {
+      wrap.hidden = true;
+      listEl.innerHTML = "";
+      return;
+    }
+    wrap.hidden = false;
+    listEl.innerHTML = templates
+      .map(
+        (t) =>
+          '<button type="button" class="project-template-card" data-controller="' + escapeHtml(controllerId) + '" data-template-id="' + escapeHtml(t.id) + '">' +
+          "<strong>" + escapeHtml(t.name || t.id) + "</strong>" +
+          (t.description ? "<span class=\"project-template-desc\">" + escapeHtml(t.description) + "</span>" : "") +
+          "</button>"
+      )
+      .join("");
+    listEl.querySelectorAll(".project-template-card").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const cid = btn.getAttribute("data-controller") || "";
+        const tid = btn.getAttribute("data-template-id") || "";
+        const templatesForController = projectTemplatesData.templates_by_controller[cid] || [];
+        const t = templatesForController.find((x) => x.id === tid);
+        if (!t) return;
+        const titleEl = document.getElementById("project-title");
+        const descEl = document.getElementById("project-description");
+        const msgEl = document.getElementById("project-message");
+        if (titleEl) titleEl.value = t.name || t.id || "";
+        if (descEl) descEl.value = t.description || "";
+        if (msgEl) msgEl.value = t.prompt || "";
+      });
+    });
+  }
+
+  document.getElementById("project-controller")?.addEventListener("change", onProjectControllerChange);
 
   function loadProjectsList() {
     const sel = document.getElementById("project-select");
@@ -1097,6 +1503,38 @@
 
   const BOM_ADD_CATEGORIES = ["component", "board", "module", "tool", "other"];
 
+  function formatCurrency(n) {
+    if (n == null || isNaN(n) || n === "") return "—";
+    const num = Number(n);
+    if (num === 0) return "$0.00";
+    return "$" + num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }
+
+  function computeBomTotal(bom) {
+    const rows = bom || [];
+    let total = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const qty = Number(rows[i].quantity) || 0;
+      const up = Number(rows[i].unit_price);
+      if (!isNaN(up) && up >= 0) total += qty * up;
+    }
+    return total;
+  }
+
+  function updateProjectCost() {
+    const el = document.getElementById("project-cost-summary");
+    if (!el) return;
+    const total = computeBomTotal(currentBom);
+    const hasAnyPrice = (currentBom || []).some((r) => r.unit_price != null && r.unit_price !== "" && !isNaN(Number(r.unit_price)));
+    if (!hasAnyPrice && total === 0) {
+      el.textContent = "";
+      el.className = "project-cost-summary";
+      return;
+    }
+    el.textContent = "Project cost: " + formatCurrency(total);
+    el.className = "project-cost-summary project-cost-summary-visible";
+  }
+
   function renderBom(bom) {
     const tbody = document.getElementById("project-bom-tbody");
     if (!tbody) return;
@@ -1106,11 +1544,17 @@
       .map(
         (r, idx) => {
           const catOpts = BOM_ADD_CATEGORIES.map((c) => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>").join("");
+          const qty = Number(r.quantity) || 0;
+          const up = r.unit_price != null && r.unit_price !== "" ? Number(r.unit_price) : NaN;
+          const lineTotal = !isNaN(up) && up >= 0 ? qty * up : null;
+          const upVal = (r.unit_price != null && r.unit_price !== "") ? String(r.unit_price) : "";
           return (
             "<tr data-bom-index=\"" + idx + "\">" +
             "<td>" + escapeHtml(r.name || "—") + "</td>" +
             "<td>" + escapeHtml(r.part_number || "—") + "</td>" +
             "<td>" + (r.quantity ?? "—") + "</td>" +
+            "<td><input type=\"number\" step=\"0.01\" min=\"0\" placeholder=\"0\" class=\"bom-unit-price\" data-index=\"" + idx + "\" value=\"" + escapeHtml(upVal) + "\" aria-label=\"Unit price for row " + (idx + 1) + "\"></td>" +
+            "<td class=\"bom-line-total\">" + (lineTotal != null ? formatCurrency(lineTotal) : "—") + "</td>" +
             "<td>" + (r.qty_on_hand != null ? r.qty_on_hand : "—") + "</td>" +
             "<td>" + (r.shortfall != null && r.shortfall > 0 ? r.shortfall : "—") + "</td>" +
             "<td class=\"bom-actions\">" +
@@ -1122,6 +1566,25 @@
         }
       )
       .join("");
+    tbody.querySelectorAll(".bom-unit-price").forEach((input) => {
+      const idx = parseInt(input.getAttribute("data-index"), 10);
+      input.addEventListener("input", () => {
+        const val = input.value.trim();
+        if (!currentBom[idx]) return;
+        currentBom[idx].unit_price = val === "" ? undefined : (parseFloat(val) || 0);
+        const qty = Number(currentBom[idx].quantity) || 0;
+        const up = Number(currentBom[idx].unit_price);
+        const lineEl = input.closest("tr")?.querySelector(".bom-line-total");
+        if (lineEl) lineEl.textContent = (!isNaN(up) && up >= 0) ? formatCurrency(qty * up) : "—";
+        updateProjectCost();
+      });
+      input.addEventListener("change", () => {
+        const val = input.value.trim();
+        if (!currentBom[idx]) return;
+        currentBom[idx].unit_price = val === "" ? undefined : (parseFloat(val) || 0);
+        updateProjectCost();
+      });
+    });
     tbody.querySelectorAll(".bom-remove-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1133,6 +1596,7 @@
             if (data.error) throw new Error(data.error);
             currentBom = data.parts_bom || [];
             renderBom(currentBom);
+            updateProjectCost();
           })
           .catch((err) => alert(err.message));
       });
@@ -1158,6 +1622,7 @@
           .catch((err) => alert(err.message));
       });
     });
+    updateProjectCost();
   }
 
   function renderProjectMessages(msgs) {
@@ -1247,9 +1712,16 @@
           schematic: proj.schematic || "",
           enclosure: proj.enclosure || "",
         };
+        const controllerSel = document.getElementById("project-controller");
+        if (controllerSel) {
+          const preferred = (proj.controller || "").trim() || (projectTemplatesData.inventory_controller_ids || [])[0];
+          if (preferred && Array.from(controllerSel.options).some((o) => o.value === preferred)) controllerSel.value = preferred;
+          onProjectControllerChange();
+        }
         renderProjectMessages(currentMessages);
         renderBom(currentBom);
         renderDesign(currentDesign);
+        updateProjectCost();
         if (digiLink) digiLink.href = "/api/projects/" + encodeURIComponent(projectId) + "/bom/digikey";
         if (mouserLink) mouserLink.href = "/api/projects/" + encodeURIComponent(projectId) + "/bom/mouser";
         setProjectExportLinks(projectId);
@@ -1258,9 +1730,16 @@
         currentMessages = [];
         currentBom = [];
         currentDesign = { pin_outs: [], wiring: [], schematic: "", enclosure: "" };
+        const controllerSel = document.getElementById("project-controller");
+        if (controllerSel && (projectTemplatesData.inventory_controller_ids || []).length) {
+          const def = projectTemplatesData.inventory_controller_ids[0];
+          if (Array.from(controllerSel.options).some((o) => o.value === def)) controllerSel.value = def;
+          onProjectControllerChange();
+        }
         renderProjectMessages([]);
         renderBom([]);
         renderDesign(currentDesign);
+        updateProjectCost();
       });
   }
 
@@ -1270,6 +1749,18 @@
     if (sel) sel.value = "";
     openProject("");
   });
+
+  const panelProjects = document.getElementById("panel-projects");
+  if (panelProjects) {
+    const obsProjects = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.attributeName === "hidden" && !panelProjects.hidden && currentProjectId) {
+          openProject(currentProjectId);
+        }
+      });
+    });
+    obsProjects.observe(panelProjects, { attributes: true });
+  }
 
   document.getElementById("btn-project-send")?.addEventListener("click", () => {
     const input = document.getElementById("project-message");
@@ -1335,6 +1826,7 @@
             if (suggestedBom.length) {
               currentBom = suggestedBom;
               renderBom(currentBom);
+              updateProjectCost();
             }
             if (suggestedDesign && (suggestedDesign.pin_outs?.length || suggestedDesign.wiring?.length || suggestedDesign.schematic || suggestedDesign.enclosure)) {
               currentDesign = {
@@ -1476,8 +1968,13 @@
       .then((r) => r.json())
       .then((data) => {
         if (data.bom) {
-          currentBom = data.bom;
+          const prev = currentBom;
+          currentBom = (data.bom || []).map((row, i) => ({
+            ...row,
+            unit_price: (prev[i] && (prev[i].unit_price != null && prev[i].unit_price !== "")) ? prev[i].unit_price : row.unit_price,
+          }));
           renderBom(currentBom);
+          updateProjectCost();
         }
       })
       .catch(() => {});
@@ -1487,7 +1984,12 @@
     const title = (document.getElementById("project-title")?.value || "").trim();
     const description = (document.getElementById("project-description")?.value || "").trim();
     const statusEl = document.getElementById("project-save-status");
-    const parts_bom = currentBom.map((r) => ({ name: r.name, part_number: r.part_number || "", quantity: r.quantity ?? 0 }));
+    const parts_bom = currentBom.map((r) => {
+      const out = { name: r.name, part_number: r.part_number || "", quantity: r.quantity ?? 0 };
+      if (r.unit_price != null && r.unit_price !== "" && !isNaN(Number(r.unit_price))) out.unit_price = Number(r.unit_price);
+      return out;
+    });
+    const controllerVal = document.getElementById("project-controller")?.value?.trim() || undefined;
     const payload = {
       title: title || "Untitled project",
       description,
@@ -1497,6 +1999,7 @@
       wiring: currentDesign.wiring,
       schematic: currentDesign.schematic,
       enclosure: currentDesign.enclosure,
+      controller: controllerVal,
     };
     if (currentProjectId) {
       fetch("/api/projects/" + encodeURIComponent(currentProjectId), {
@@ -1548,6 +2051,7 @@
   loadFlashDevices();
   loadFlashArtifacts();
   loadProjectsList();
+  loadProjectTemplates();
 
   document.getElementById("inventory-btn-apply")?.addEventListener("click", () => fetchItems(buildInventoryQueryParams()));
   document.querySelectorAll("#inventory-table .sortable").forEach((th) => {

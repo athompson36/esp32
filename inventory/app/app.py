@@ -36,9 +36,13 @@ from config import (
 from updates import get_updates
 from flash_ops import (
     backup_flash,
+    build_firmware,
+    download_release_firmware,
     flash_firmware,
+    get_build_config,
     get_flash_devices,
     list_artifacts_and_backups,
+    list_patches,
     list_serial_ports,
     list_serial_ports_with_detection,
     restore_flash,
@@ -47,10 +51,12 @@ from project_ops import (
     bom_csv_digikey,
     bom_csv_mouser,
     check_bom_against_inventory,
+    get_controllers_in_inventory,
     list_proposals,
     load_proposal,
     save_proposal,
 )
+from project_templates import get_templates, list_controllers
 from map_ops import wizard_estimate, wizard_list_regions
 from device_ops import (
     add_bom_row_to_inventory,
@@ -254,6 +260,64 @@ def get_item(item_id):
     conn.close()
     if not row:
         return jsonify({"error": "Not found"}), 404
+    return jsonify(row_to_item(row))
+
+
+@app.route("/api/items/<item_id>", methods=["PUT"])
+def update_item(item_id):
+    """Update an inventory item in the database. Body: name, category, quantity, manufacturer, part_number, model, location, notes, datasheet_url, specs?, used_in?, tags?."""
+    item_id = unquote(item_id)
+    conn = get_db()
+    if not conn:
+        return jsonify({"error": "Database not found."}), 503
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json() or {}
+    # Build UPDATE: only allow updating these columns (id is primary key, do not change)
+    updates = []
+    params = []
+    for key in ("name", "category", "manufacturer", "part_number", "model", "location", "notes", "datasheet_url", "datasheet_file"):
+        if key in data:
+            val = data[key]
+            if val is None:
+                val = ""
+            if isinstance(val, (dict, list)):
+                val = json.dumps(val, ensure_ascii=False)
+            updates.append(f"{key} = ?")
+            params.append(str(val).strip() if val else "")
+    if "quantity" in data:
+        try:
+            qty = int(data["quantity"])
+            updates.append("quantity = ?")
+            params.append(max(0, qty))
+        except (TypeError, ValueError):
+            pass
+    for key in ("specs", "used_in", "tags"):
+        if key in data:
+            val = data[key]
+            if isinstance(val, str):
+                try:
+                    json.loads(val)
+                except json.JSONDecodeError:
+                    val = "[]" if key != "specs" else "{}"
+            else:
+                val = json.dumps(val, ensure_ascii=False) if val is not None else ("[]" if key != "specs" else "{}")
+            updates.append(f"{key} = ?")
+            params.append(val)
+    if not updates:
+        conn.close()
+        return jsonify(row_to_item(row))
+    params.append(item_id)
+    try:
+        conn.execute("UPDATE items SET " + ", ".join(updates) + " WHERE id = ?", params)
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": str(e)[:200]}), 500
+    row = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    conn.close()
     return jsonify(row_to_item(row))
 
 
@@ -1119,7 +1183,11 @@ def api_flash_ports():
             ports = list_serial_ports_with_detection(timeout_per_port=4)
         else:
             ports = list_serial_ports()
-        return jsonify({"ports": ports})
+        payload = {"ports": ports}
+        # When app runs in Docker, USB/serial is not available (host devices not in container /dev)
+        if REPO_ROOT == "/workspace":
+            payload["in_container_no_usb"] = True
+        return jsonify(payload)
     except Exception as e:
         return jsonify({"error": str(e), "ports": []}), 500
 
@@ -1142,6 +1210,94 @@ def api_flash_artifacts():
         return jsonify({"files": list_artifacts_and_backups(firmware_filter=firmware or None)})
     except Exception as e:
         return jsonify({"error": str(e), "files": []}), 500
+
+
+@app.route("/api/flash/build-config")
+def api_flash_build_config():
+    """List device/firmware/envs available for build (from BUILD_CONFIG)."""
+    try:
+        return jsonify({"builds": get_build_config()})
+    except Exception as e:
+        return jsonify({"error": str(e), "builds": []}), 500
+
+
+@app.route("/api/flash/patches")
+def api_flash_patches():
+    """List available patches for device/firmware. Query: device_id, firmware_id."""
+    device_id = (request.args.get("device_id") or "").strip()
+    firmware_id = (request.args.get("firmware_id") or "").strip()
+    if not device_id or not firmware_id:
+        return jsonify({"patches": []})
+    try:
+        return jsonify({"patches": list_patches(device_id, firmware_id)})
+    except Exception as e:
+        return jsonify({"error": str(e), "patches": []}), 500
+
+
+@app.route("/api/flash/build", methods=["POST"])
+def api_flash_build():
+    """Build firmware. Body: device_id, firmware_id, env_name; optional: patch_paths, clean, verbose, timeout, flash_after, port. Returns { success, path?, flashed?, error? }."""
+    data = request.get_json() or request.form or {}
+    device_id = (data.get("device_id") or "").strip()
+    firmware_id = (data.get("firmware_id") or "").strip()
+    env_name = (data.get("env_name") or "").strip()
+    patch_paths = data.get("patch_paths")
+    if isinstance(patch_paths, str):
+        patch_paths = [p.strip() for p in patch_paths.split(",") if p.strip()]
+    elif not isinstance(patch_paths, list):
+        patch_paths = []
+    patch_paths = [p.strip() for p in patch_paths if p and isinstance(p, str)]
+    clean = bool(data.get("clean"))
+    verbose = bool(data.get("verbose"))
+    timeout = int(data.get("timeout") or 300)
+    timeout = max(60, min(3600, timeout))
+    flash_after = bool(data.get("flash_after"))
+    port = (data.get("port") or "").strip()
+    flash_device_id = (data.get("flash_device_id") or data.get("device_id") or "").strip()
+    if not device_id or not firmware_id:
+        return jsonify({"success": False, "error": "device_id and firmware_id required"}), 400
+    try:
+        ok, path_or_err = build_firmware(
+            device_id, firmware_id, env_name,
+            patch_paths=patch_paths, timeout=timeout, clean=clean, verbose=verbose,
+        )
+        if not ok:
+            return jsonify({"success": False, "error": path_or_err}), 500
+        if flash_after and port and flash_device_id:
+            abs_path = os.path.join(REPO_ROOT, path_or_err)
+            if not os.path.isfile(abs_path):
+                return jsonify({"success": True, "path": path_or_err, "error": "Built but flash file not found"}), 500
+            flashed_ok, flash_msg = flash_firmware(port, flash_device_id, abs_path)
+            if not flashed_ok:
+                return jsonify({"success": True, "path": path_or_err, "flashed": False, "flash_error": flash_msg})
+            return jsonify({"success": True, "path": path_or_err, "flashed": True})
+        return jsonify({"success": True, "path": path_or_err})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)[:300]}), 500
+
+
+@app.route("/api/flash/download-release", methods=["POST"])
+def api_flash_download_release():
+    """Download a .bin from a GitHub release to artifacts. Body: owner, repo, tag?, device_id?, firmware_id?, asset_filter?."""
+    data = request.get_json() or request.form or {}
+    owner = (data.get("owner") or "").strip()
+    repo = (data.get("repo") or "").strip()
+    tag = (data.get("tag") or "").strip() or None
+    device_id = (data.get("device_id") or "").strip() or None
+    firmware_id = (data.get("firmware_id") or "").strip() or None
+    asset_filter = (data.get("asset_filter") or "").strip() or None
+    if not owner or not repo:
+        return jsonify({"success": False, "error": "owner and repo required"}), 400
+    try:
+        ok, path_or_err = download_release_firmware(
+            owner=owner, repo=repo, tag=tag,
+            device_id=device_id, firmware_id=firmware_id, asset_filter=asset_filter,
+        )
+        if ok:
+            return jsonify({"success": True, "path": path_or_err})
+        return jsonify({"success": False, "error": path_or_err}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)[:300]}), 500
 
 
 @app.route("/api/flash/backup", methods=["POST"])
@@ -1245,6 +1401,20 @@ def api_flash_flash():
 
 # --- Project planning ---
 
+@app.route("/api/projects/templates")
+def api_projects_templates():
+    """List project templates, optionally filtered by controller. Returns inventory_controller_ids when no filter."""
+    controller = (request.args.get("controller") or "").strip()
+    try:
+        out = get_templates(controller or None)
+        if not controller:
+            conn = get_db()
+            out["inventory_controller_ids"] = get_controllers_in_inventory(conn) if conn else []
+        return jsonify(out)
+    except Exception as e:
+        return jsonify({"error": str(e), "controllers": [], "templates": [], "inventory_controller_ids": []}), 500
+
+
 @app.route("/api/projects", methods=["GET"])
 def api_projects_list():
     """List saved project proposals (id, title, updated_at)."""
@@ -1286,7 +1456,7 @@ def api_projects_update(proposal_id):
         return jsonify({"error": "Not found"}), 404
     data = request.get_json() or {}
     for key in ("title", "description", "idea_summary", "parts_bom", "conversation", "conversation_summary",
-                "pin_outs", "wiring", "schematic", "enclosure"):
+                "pin_outs", "wiring", "schematic", "enclosure", "controller"):
         if key in data:
             existing[key] = data[key]
     existing["id"] = proposal_id

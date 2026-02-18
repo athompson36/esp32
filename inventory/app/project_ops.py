@@ -7,6 +7,17 @@ import uuid
 
 from config import PROJECT_PROPOSALS_DIR
 
+# Order and keywords for inferring controller type from inventory (name, model, manufacturer).
+# Used to default the project planning Controller dropdown to what the user has in stock.
+CONTROLLER_ID_ORDER = ["esp32", "raspberry_pi", "teensy", "arduino", "pine64", "esp32_sbc", "other"]
+INVENTORY_CONTROLLER_KEYWORDS = [
+    ("esp32", ["esp32", "espressif", "t-beam", "t-deck", "heltec"]),
+    ("raspberry_pi", ["raspberry", "rpi", "bcm271", "pi 4", "pi 5", "pi zero", "pico"]),
+    ("teensy", ["teensy", "pjrc"]),
+    ("arduino", ["arduino", "atmega", "nano", "uno", "mega", "leonardo"]),
+    ("pine64", ["pine64", "pine 64", "rock64", "rockpro64", "rock 64"]),
+]
+
 
 def ensure_proposals_dir():
     os.makedirs(PROJECT_PROPOSALS_DIR, exist_ok=True)
@@ -67,6 +78,34 @@ def save_proposal(data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     return proposal_id
+
+
+def get_controllers_in_inventory(conn):
+    """
+    Infer which project controller types (esp32, raspberry_pi, etc.) the user has in inventory.
+    Queries items in category 'controller' or 'sbc' and matches name/model/manufacturer to keywords.
+    Returns list of controller_ids in CONTROLLER_ID_ORDER (so UI can default to first in list).
+    """
+    if not conn:
+        return []
+    try:
+        rows = conn.execute(
+            "SELECT name, model, manufacturer FROM items WHERE category IN (?, ?)",
+            ("controller", "sbc"),
+        ).fetchall()
+    except Exception:
+        return []
+    found = set()
+    for row in rows:
+        name = (row[0] or "").lower()
+        model = (row[1] or "").lower()
+        mfr = (row[2] or "").lower()
+        combined = " ".join([name, model, mfr])
+        for cid, keywords in INVENTORY_CONTROLLER_KEYWORDS:
+            if any(kw in combined for kw in keywords):
+                found.add(cid)
+                break
+    return [cid for cid in CONTROLLER_ID_ORDER if cid in found]
 
 
 def check_bom_against_inventory(conn, bom_rows):
