@@ -1,0 +1,26 @@
+---
+description: Keep PROJECT_STRUCTURE.md updated when adding features, changing layout, or changing dependencies
+alwaysApply: true
+---
+
+# Keep PROJECT_STRUCTURE.md updated
+
+**PROJECT_STRUCTURE.md** at the repo root is the single reference for repo layout, conventions, stacks, and dependencies. **Update it** whenever you:
+
+- **Add a feature** that introduces new directories, services, or entry points.
+- **Change repo structure** (new top-level dirs, moved files, new config locations).
+- **Add or remove dependencies** (e.g. requirements.txt, package.json, new system deps in Dockerfiles).
+- **Change conventions** (naming, where things live, how to run or build something).
+- **Add or change Docker images** (new Dockerfile or compose service, env vars, ports).
+
+## What to update
+
+- **Section 2 (Directory structure):** Add or rename dirs/files that are part of the canonical layout.
+- **Section 3 (Conventions):** Adjust if naming or workflow rules change.
+- **Section 4 (Stacks):** Add a stack or change runtime/entry.
+- **Section 5 (Libraries and dependencies):** Update when requirements.txt, package.json, or other dep lists change.
+- **Section 6 (Docker):** Add images, compose paths, or restart/port details.
+- **Section 7 (Key config and env):** New env vars or config files.
+- **Section 8 (Last updated):** Note what changed and when (brief line is enough).
+
+You don’t need to edit PROJECT_STRUCTURE.md for tiny typo fixes or comments; focus on layout, conventions, stacks, and dependencies.

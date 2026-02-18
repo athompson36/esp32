@@ -1,0 +1,28 @@
+---
+description: Use setup context and get_setup_help when the user asks about setup, wizards, or "how do I set up…"
+alwaysApply: false
+---
+
+# Setup help — wizards and acceptability
+
+When the user asks about **setup**, **wizards**, **configuration**, or **"how do I set up…"** (paths, flash, map tiles, project planning, device registry, Docker), use the lab’s setup context so answers stay accurate and within what’s acceptable in each area.
+
+## What to do
+
+1. **Read setup context**  
+   Use the MCP resource **`project://setup-context`** or the tool **`get_setup_help`** to load `docs/AGENT_SETUP_CONTEXT.md` (wizards, entry points, acceptability by area, and pointers to other docs).
+
+2. **Answer from context**  
+   Use that content to:
+   - Recommend setup steps or which wizard to use
+   - Explain what is valid in each area (e.g. backup types, region slugs, BOM fields)
+   - Point to the right doc or tab (e.g. AI settings → Paths, Backup / Flash tab, map CLI/API)
+
+3. **Chat-style setup**  
+   If the user wants a guided, chat-style setup, walk through the steps using the acceptability rules in the context; offer to go deeper on any step.
+
+## Reference
+
+- **Context file:** `docs/AGENT_SETUP_CONTEXT.md`
+- **MCP:** resource `project://setup-context`, tool `get_setup_help`
+- **Web UI:** Inventory app has a **Setup help** tab with a chat that uses the same context (API: `POST /api/setup/chat`).

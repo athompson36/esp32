@@ -1,0 +1,33 @@
+{
+  "id": "t_deck",
+  "name": "LilyGO T-Deck",
+  "mcu": "ESP32",
+  "radios": [
+    "SX1262 LoRa"
+  ],
+  "display": "Built-in display + keyboard",
+  "battery": "Internal",
+  "storage": "SD card; internal flash",
+  "flash_methods": [
+    "usb_direct",
+    "sd_launcher"
+  ],
+  "compatible_firmware": [
+    "launcher",
+    "meshtastic",
+    "bruce",
+    "ghost",
+    "marauder"
+  ],
+  "capability": {
+    "chip": "esp32",
+    "flash_size": "4MB",
+    "rf_bands": [
+      "868",
+      "915"
+    ],
+    "can_support": false,
+    "sd_support": true,
+    "launcher_compatible": true
+  }
+}

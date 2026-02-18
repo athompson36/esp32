@@ -15,7 +15,7 @@ Single reference for **SDKs**, **CLI tools**, and **Docker** usage across all de
 | **ESP32** (all) | PlatformIO + espressif32 | `pio run -e <env>` | Arduino or ESP-IDF framework. PIO installs toolchain on first use. |
 | **ESP32** (native) | ESP-IDF | `idf.py` | Install separately if not using PIO; or use PIO framework = espidf. |
 | **Arduino Uno** | PlatformIO + atmelavr | `pio run -e uno` | ATmega328P. |
-| **Teensy 3.x / 4.x** | PlatformIO + teensy | `pio run -e teensy40` etc. | Arduino-style; PIO uses Teensy toolchain. |
+| **Teensy v3.2 / v4.1** | PlatformIO + teensy | `pio run -e teensy40` etc. | Arduino-style; PIO uses Teensy toolchain. |
 | **PineTime (nRF52)** | PlatformIO + nordicnrf52 | `pio run -e pinetime_devkit0` | InfiniTime/Zephyr. |
 | **Raspberry Pi** | gcc-arm-linux-gnueabihf, gcc-aarch64-linux-gnu | `CROSS_COMPILE=... make` | 32-bit and 64-bit ARM. |
 | **Pine64 SBCs** | gcc-aarch64-linux-gnu | Same as RPi 64-bit | Kernel/rootfs builds. |
@@ -54,7 +54,7 @@ Single reference for **SDKs**, **CLI tools**, and **Docker** usage across all de
 | **pine_phone** | Kernel + userspace (aarch64) | Flash script / SD |
 | **pine_time** | `pio run` (nordicnrf52) or Zephyr | J-Link / openocd / nRF DFU |
 | **arduino_uno** | `pio run` or `arduino-cli compile` | avrdude (PIO or Arduino CLI) |
-| **teensy_v3 / v4** | `pio run` | Teensy loader (host) |
+| **teensy_v3.2 / v4.1** | `pio run` | Teensy loader (host) |
 
 ---
 

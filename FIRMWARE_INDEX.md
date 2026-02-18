@@ -4,6 +4,42 @@ Single reference for **every device** in the lab and **all available firmwares /
 
 ---
 
+## Meshtastic, MeshCore & Launcher — supported devices & repos
+
+For the **full list of supported devices** and **all related repos** (firmware, web flashers, clients), see:
+
+**[docs/MESHTASTIC_MESHCORE_LAUNCHER_DEVICES.md](docs/MESHTASTIC_MESHCORE_LAUNCHER_DEVICES.md)**
+
+Summary:
+
+| Firmware / project | Supported devices (canonical list) | Web flasher |
+|--------------------|-----------------------------------|-------------|
+| **Meshtastic** | [meshtastic.org/docs/hardware/devices/](https://meshtastic.org/docs/hardware/devices/) — RAK, LILYGO (T-Beam, T-Deck, T-Echo, LoRa, Pager), HELTEC (LoRa32, Vision Master, Mesh Node, MeshPocket), Seeed (SenseCAP, Wio), B&Q (Nano, Station), Elecrow, muzi works, RPi Pico + Linux native | [flasher.meshtastic.org](https://flasher.meshtastic.org) |
+| **MeshCore** | [meshcore.co.uk/get.html](https://meshcore.co.uk/get.html), [nodakmesh.org/meshcore/devices](https://nodakmesh.org/meshcore/devices) — Heltec V3/V4/T114, LilyGo T-Beam/T-Deck/T-Deck+/T-Echo, Seeed Wio L1, SenseCAP T1000-E, RAK WisBlock/WisMesh, Station G2, Nano G2 Ultra, etc. | [flasher.meshcore.co.uk](https://flasher.meshcore.co.uk) |
+| **Launcher** | T-Deck, T-Deck Plus, T-Dongle-S3, T-Display-S3, M5StickC, M5Cardputer — [bmorcelli.github.io/Launcher](https://bmorcelli.github.io/Launcher/) | [Launcher web flasher](https://bmorcelli.github.io/Launcher/webflasher.html) |
+| **Bruce** | Launcher-compatible (M5Stack Cardputer/Sticks/Core, LilyGo). Red-team WiFi/BLE. | [bruce.computer/flasher](https://bruce.computer/flasher) |
+| **Ghost ESP** | CYD, ESP32-S3-Cardputer, AwokMini. Pentest firmware. | [flasher.spookytools.com](https://flasher.spookytools.com) |
+| **Marauder** | Many ESP32 boards (v4/v6/Mini/Kit/Flipper, CYD). WiFi/BLE toolkit. | Prebuilt + OTA; [justcallmekoko/ESP32Marauder](https://github.com/justcallmekoko/ESP32Marauder) wiki |
+| **Flipper Zero** | Main unit: official, Unleashed, RogueMaster. WiFi board (ESP32 add-on): Marauder. | qFlipper, SD, mobile app; [web.unleashedflip.com](https://web.unleashedflip.com), [lab.flipper.net](https://lab.flipper.net) |
+
+Repo index (firmware, web, web-flasher, Android, Apple, python, protos, docs): [REPOS.md](REPOS.md).
+
+---
+
+## flipper_zero (Flipper Zero)
+
+| Firmware / project | Repo / URL | Notes |
+|--------------------|------------|--------|
+| **Official** | [flipperdevices/flipperzero-firmware](https://github.com/flipperdevices/flipperzero-firmware) | GPL-3.0. Update: qFlipper, Flipper mobile app, [flipperzero.one/update](https://flipperzero.one/update). |
+| **qFlipper** | [flipperdevices/qFlipper](https://github.com/flipperdevices/qFlipper) | Desktop app for firmware update and file manager. |
+| **Unleashed** | [DarkFlippers/unleashed-firmware](https://github.com/DarkFlippers/unleashed-firmware) | Community fork; Sub-GHz, rolling code, extended protocols. [web.unleashedflip.com](https://web.unleashedflip.com). |
+| **RogueMaster** | [RogueMaster/flipperzero-firmware-wPlugins](https://github.com/RogueMaster/flipperzero-firmware-wPlugins) | Plugins, games, NFC/Sub-GHz extras. [lab.flipper.net](https://lab.flipper.net). |
+| **Marauder (WiFi board)** | [justcallmekoko/ESP32Marauder](https://github.com/justcallmekoko/ESP32Marauder) | ESP32 WiFi add-on for Flipper; Marauder Flipper target. |
+
+**Docs:** [docs.flipper.net](https://docs.flipper.net/zero/basics/firmware-update). Lab device layout: [docs/FLIPPER_ZERO.md](docs/FLIPPER_ZERO.md).
+
+---
+
 ## t_beam_1w (LilyGO T-Beam 1W)
 
 | Firmware / project | Repo / URL | Notes |
@@ -146,7 +182,7 @@ Single reference for **every device** in the lab and **all available firmwares /
 
 ---
 
-## teensy_v3 (Teensy 3.2)
+## teensy_v3 (Teensy v3.2)
 
 | Firmware / framework | Repo / URL | Notes |
 |----------------------|------------|--------|
@@ -158,7 +194,7 @@ Single reference for **every device** in the lab and **all available firmwares /
 
 ---
 
-## teensy_v4 (Teensy 4.0 / 4.1)
+## teensy_v4 (Teensy v4.1)
 
 | Firmware / framework | Repo / URL | Notes |
 |----------------------|------------|--------|

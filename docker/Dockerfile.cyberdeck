@@ -1,0 +1,24 @@
+# Cyberdeck Manager — container for CLI + tools (map, flash, firmware metadata)
+# Build: docker build -f docker/Dockerfile.cyberdeck -t cyberdeck-manager .
+# Run: docker run --rm -v "$(pwd):/workspace" -w /workspace cyberdeck-manager cyberdeck --help
+# Optional: mount Docker socket for esptool/serial: -v /var/run/docker.sock:/var/run/docker.sock
+
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    usbutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    typer[all] \
+    rich \
+    httpx \
+    pyserial \
+    esptool
+
+WORKDIR /workspace
+
+# Mount repo at /workspace; registry/, devices/, regions/ expected.
+# When cyberdeck_cli is implemented: docker run ... cyberdeck-manager cyberdeck device list
+CMD ["bash"]

@@ -1,4 +1,4 @@
-# ESP32 Lab MCP Server
+# Cyber-Lab MCP Server
 
 MCP server that exposes **project context**, **roadmap**, **development plan**, and **device context**, **inventory**, and **firmware index** so assistants (e.g. Cursor) can stay aligned with the repo’s goals and tasks.
 
@@ -13,6 +13,11 @@ MCP server that exposes **project context**, **roadmap**, **development plan**, 
 | `project://inventory` | [inventory/README.md](../inventory/README.md) — hardware catalog (SBCs, controllers, sensors, components) |
 | `project://firmware-index` | [FIRMWARE_INDEX.md](../FIRMWARE_INDEX.md) — firmware and OS per device |
 | `project://repos` | [REPOS.md](../REPOS.md) — lab repo index (Meshtastic, MeshCore, Launcher, etc.) |
+| `project://setup-context` | [docs/AGENT_SETUP_CONTEXT.md](../docs/AGENT_SETUP_CONTEXT.md) — setup wizards and acceptability (agent setup help) |
+| `project://database-context` | [docs/AGENT_DATABASE_CONTEXT.md](../docs/AGENT_DATABASE_CONTEXT.md) — database handling (inventory DB, project proposals) |
+| `project://backend-context` | [docs/AGENT_BACKEND_CONTEXT.md](../docs/AGENT_BACKEND_CONTEXT.md) — Flask routes, services, config |
+| `project://docker-context` | [docs/AGENT_DOCKER_CONTEXT.md](../docs/AGENT_DOCKER_CONTEXT.md) — Docker status, containers, start/stop, images |
+| `project://frontend-context` | [docs/AGENT_FRONTEND_CONTEXT.md](../docs/AGENT_FRONTEND_CONTEXT.md) — frontend tabs, panels, UI guidance |
 
 ## Tools
 
@@ -23,6 +28,8 @@ MCP server that exposes **project context**, **roadmap**, **development plan**, 
 | `get_device_context` | Returns device context and SDK/tools for a given device (`device_id`, e.g. `t_beam_1w`, `t_deck_plus`). |
 | `list_devices` | Lists all device IDs under `devices/`. |
 | `get_inventory_summary` | Returns inventory README and list of catalog categories (sbcs, controllers, sensors, accessories, components). |
+| `get_setup_help` | Returns setup context and wizard summary. Use when the user asks for setup recommendations, how to configure something, or chat-style setup with explanations. |
+| `get_lab_guidance` | Returns context for database, backend, Docker, or frontend. Optional `area`: `database` \| `backend` \| `docker` \| `frontend` (omit for all four). Use when the user asks about DB handling, API/services, Docker status/containers, or UI/tabs. |
 
 ## Build & run (local)
 
@@ -30,7 +37,7 @@ MCP server that exposes **project context**, **roadmap**, **development plan**, 
 - **Build:** `npm run build`
 - **Run (stdio):** `node dist/index.js` — intended to be spawned by an MCP client (e.g. Cursor); reads repo files relative to current working directory.
 
-**Repo root:** By default the server uses `process.cwd()` as the repo root. To override (e.g. when Cursor runs from a different cwd), set `ESP32_LAB_REPO_ROOT` to the absolute path of the repo.
+**Repo root:** By default the server uses `process.cwd()` as the repo root. To override (e.g. when Cursor runs from a different cwd), set `CYBER_LAB_REPO_ROOT` to the absolute path of the repo.
 
 ## Run with Docker
 
@@ -42,9 +49,9 @@ The server runs over **stdio** (no HTTP). Use Docker so the same image runs ever
 docker compose -f mcp-server/docker-compose.yml build
 ```
 
-Or: `docker build -t esp32-lab-mcp -f mcp-server/Dockerfile mcp-server`
+Or: `docker build -t cyber-lab-mcp -f mcp-server/Dockerfile mcp-server`
 
-**Test** (from repo root): `docker compose -f mcp-server/docker-compose.yml run --rm -v "$(pwd)":/workspace -e ESP32_LAB_REPO_ROOT=/workspace mcp`
+**Test** (from repo root): `docker compose -f mcp-server/docker-compose.yml run --rm -v "$(pwd)":/workspace -e CYBER_LAB_REPO_ROOT=/workspace mcp`
 
 Use **Cursor** with the Docker command so it spawns the container and talks over stdio (see Cursor configuration below).
 
@@ -53,20 +60,20 @@ Use **Cursor** with the Docker command so it spawns the container and talks over
 Add the lab MCP server in Cursor so it can call tools and read resources.
 
 1. Open **Cursor Settings → MCP** (or edit the MCP config file directly).
-2. Choose one option (replace `REPO_ROOT` with your **absolute** repo path, e.g. `/Users/andrew/Documents/fs-tech/esp32`):
+2. Choose one option (replace `REPO_ROOT` with your **absolute** repo path, e.g. `/Users/andrew/Documents/fs-tech/cyber-lab`):
 
 **Option A — Docker (recommended)**
 
 ```json
 {
   "mcpServers": {
-    "esp32-lab": {
+    "cyber-lab": {
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
         "-v", "REPO_ROOT:/workspace:ro",
-        "-e", "ESP32_LAB_REPO_ROOT=/workspace",
-        "esp32-lab-mcp"
+        "-e", "CYBER_LAB_REPO_ROOT=/workspace",
+        "cyber-lab-mcp"
       ]
     }
   }
@@ -80,7 +87,7 @@ Build the image first (see "Run with Docker" above).
 ```json
 {
   "mcpServers": {
-    "esp32-lab": {
+    "cyber-lab": {
       "command": "node",
       "args": ["REPO_ROOT/mcp-server/dist/index.js"],
       "cwd": "REPO_ROOT",
@@ -93,15 +100,15 @@ Build the image first (see "Run with Docker" above).
 **Option C — Example file**
 
 - Node: [cursor-mcp-example.json](cursor-mcp-example.json)
-- Docker: [cursor-mcp-example-docker.json](cursor-mcp-example-docker.json) — replace `/ABSOLUTE/PATH/TO/esp32` with your repo path, then merge into your Cursor MCP config.
+- Docker: [cursor-mcp-example-docker.json](cursor-mcp-example-docker.json) — replace `/ABSOLUTE/PATH/TO/cyber-lab` with your repo path, then merge into your Cursor MCP config.
 
 3. Restart Cursor or reload MCP so the server is available.
 
 **If the server will not start:**
 
-- **Docker:** Ensure the image is built: `docker compose -f mcp-server/docker-compose.yml build` (from repo root). In Cursor MCP config, replace `REPO_ROOT` with your **absolute** repo path (e.g. `/Users/you/Documents/fs-tech/esp32`).
-- **Node (local):** Use the **absolute** path to `mcp-server/dist/index.js` in `args`, and set `cwd` to the **repo root** (so `ESP32_LAB_REPO_ROOT` can be omitted, or set it to the same path). Run `npm run build` inside `mcp-server/` so `dist/` exists.
-- Check Cursor’s MCP / Developer logs for stderr: a successful start prints `[esp32-lab-mcp] Server running on stdio (repo: ...)`; failures print `[esp32-lab-mcp] Fatal: ...`.
+- **Docker:** Ensure the image is built: `docker compose -f mcp-server/docker-compose.yml build` (from repo root). In Cursor MCP config, replace `REPO_ROOT` with your **absolute** repo path (e.g. `/Users/you/Documents/fs-tech/cyber-lab`).
+- **Node (local):** Use the **absolute** path to `mcp-server/dist/index.js` in `args`, and set `cwd` to the **repo root** (so `CYBER_LAB_REPO_ROOT` can be omitted, or set it to the same path). Run `npm run build` inside `mcp-server/` so `dist/` exists.
+- Check Cursor’s MCP / Developer logs for stderr: a successful start prints `[cyber-lab-mcp] Server running on stdio (repo: ...)`; failures print `[cyber-lab-mcp] Fatal: ...`.
 
 After that you can:
 - Use **Resources** to open project context, roadmap, development plan, inventory, firmware index, or repos.

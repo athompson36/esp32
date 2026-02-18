@@ -15,7 +15,7 @@ Single image that provides toolchains for **ESP32**, **Arduino** (Uno, etc.), **
 |--------|------------------|--------|
 | ESP32 (all variants) | PlatformIO + espressif32 | ESP-IDF or Arduino framework |
 | Arduino Uno (AVR) | PlatformIO + atmelavr | ATmega328P |
-| Teensy 3.x / 4.x | PlatformIO + teensy | ARM Cortex-M4/M7 |
+| Teensy v3.2 / v4.1 | PlatformIO + teensy | ARM Cortex-M4/M7 |
 | Raspberry Pi (Zero, 4, 5) | gcc-arm-linux-gnueabihf, gcc-aarch64-linux-gnu | 32-bit and 64-bit ARM |
 | Pine64 SBCs (Pine64, Rock64, RockPro64, PinePhone) | gcc-aarch64-linux-gnu | 64-bit ARM |
 | PineTime (nRF52832) | PlatformIO + nordicnrf52 | Zephyr/InfiniTime |

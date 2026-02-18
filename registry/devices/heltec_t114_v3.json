@@ -1,0 +1,19 @@
+{
+  "id": "heltec_t114_v3",
+  "name": "Heltec T114 v3",
+  "mcu": "ESP32",
+  "radios": ["SX1262 LoRa"],
+  "display": "OLED",
+  "battery": "Optional",
+  "storage": "Internal flash",
+  "flash_methods": ["usb_direct"],
+  "compatible_firmware": ["meshtastic", "meshcore"],
+  "capability": {
+    "chip": "esp32",
+    "flash_size": "4MB",
+    "rf_bands": ["868", "915"],
+    "can_support": false,
+    "sd_support": false,
+    "launcher_compatible": false
+  }
+}

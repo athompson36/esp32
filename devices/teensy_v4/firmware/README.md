@@ -1,6 +1,6 @@
-# Teensy 4.0 / 4.1 — Firmware Repos
+# Teensy v4.1 — Firmware Repos
 
-**Full index:** [FIRMWARE_INDEX.md](../../../FIRMWARE_INDEX.md#teensy_v4-teensy-40--41)
+**Full index:** [FIRMWARE_INDEX.md](../../../FIRMWARE_INDEX.md#teensy_v4-teensy-v41)
 
 | Firmware / framework | Repo | Notes |
 |----------------------|------|--------|

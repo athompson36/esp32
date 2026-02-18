@@ -1,0 +1,29 @@
+---
+description: Use database, backend, Docker, and frontend context when answering about DB, API, Docker, or UI
+alwaysApply: false
+---
+
+# Lab guidance — database, backend, Docker, frontend
+
+When the user asks about **database handling**, **backend/API/services**, **Docker (status, start/stop, containers)**, or **frontend/UI/tabs**, use the lab context so answers match the codebase and acceptability rules.
+
+## What to do
+
+1. **Choose the right context**
+   - **Database:** Inventory SQLite (schema, path, build from YAML), project proposals (file-based JSON). Use **`project://database-context`** or **`get_lab_guidance`** with `area: "database"`.
+   - **Backend:** Flask app, routes (settings, items, docker, map, flash, projects, AI, setup), config, services (flash_ops, project_ops, map_ops). Use **`project://backend-context`** or **`get_lab_guidance`** with `area: "backend"`.
+   - **Docker:** Status, container list, start/stop/restart, which images (cyber-lab-mcp, inventory-app, platformio-lab), rebuild. Use **`project://docker-context`** or **`get_lab_guidance`** with `area: "docker"`.
+   - **Frontend:** Tabs (Search, AI settings, Docker & tools, Backup/Flash, Project planning, Inventory, Setup help), panels, which API each part uses. Use **`project://frontend-context`** or **`get_lab_guidance`** with `area: "frontend"`.**
+
+2. **Answer from context**
+   - Follow schema, route, and acceptability rules from the context docs.
+   - For Docker: explain status/containers/actions and when to rebuild.
+   - For frontend: point to the correct tab and element IDs when guiding the user.
+
+3. **Multiple areas**
+   - If the question spans areas (e.g. “how does the UI start a container?”), call **`get_lab_guidance`** without `area` to get all four context files, or read the relevant resources.
+
+## Reference
+
+- **Context files:** `docs/AGENT_DATABASE_CONTEXT.md`, `docs/AGENT_BACKEND_CONTEXT.md`, `docs/AGENT_DOCKER_CONTEXT.md`, `docs/AGENT_FRONTEND_CONTEXT.md`
+- **MCP:** resources `project://database-context`, `project://backend-context`, `project://docker-context`, `project://frontend-context`; tool **`get_lab_guidance`** (optional `area`).

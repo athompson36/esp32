@@ -1,0 +1,15 @@
+# Cursor rules for this project
+
+You are working on a Meshtastic firmware fork.
+
+Priorities:
+1) Add a new PlatformIO environment named `tbeam-1w`.
+2) Add a new board variant under `variants/tbeam_1w/`.
+3) Keep changes minimal and isolated: avoid editing unrelated code.
+4) Prefer compile-time flags (`#define`) over runtime detection.
+5) Do not assume GPIO pins—only use pins explicitly provided in `docs/TBEAM_1W_PINMAP.md`.
+6) Provide clear build + flash commands in docs when you change something.
+
+Quality:
+- Must build on macOS with PlatformIO Core.
+- Avoid breaking upstream formatting/style.

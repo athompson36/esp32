@@ -16,6 +16,10 @@
 
 ---
 
+## Input calibration (Meshtastic)
+
+- **Scroll ball speed:** Meshtastic firmware (T-Deck variant) throttles trackball direction events so only 1 in every N is sent (input calibration). Default `TRACKBALL_SCROLL_DIVISOR=2` (half speed). To change: in the Meshtastic repo set in the T-Deck variant `variant.h` or in `platformio.ini` for the t-deck env: `build_flags = -DTRACKBALL_SCROLL_DIVISOR=3` for slower scroll (1=full speed, 2=half, 3=one-third).
+
 ## Flash & serial (host)
 
 | Tool | Purpose |

@@ -1,4 +1,4 @@
-# Teensy 3.2 — Hardware Layout
+# Teensy v3.2 — Hardware Layout
 
 **Board:** PJRC Teensy 3.2  
 **MCU:** NXP MK20DX256VLH7 (Cortex-M4, 72 MHz)

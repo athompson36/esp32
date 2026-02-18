@@ -21,7 +21,7 @@ configs/
 
 ## Current firmware locations
 
-- **MeshCore:** `t-beam_1w/t-beam 1w meshcore` — env defaults are in `platformio.ini` per env (e.g. `ADMIN_PASSWORD`, `ROOM_PASSWORD`, `ADVERT_NAME`).
-- **Meshtastic:** `t-beam_1w/meshtastic-tbeam-1w-firmware` — config applied at runtime via app or serial.
+- **MeshCore:** `firmware/meshcore/repo` — env defaults are in `platformio.ini` per env (e.g. `ADMIN_PASSWORD`, `ROOM_PASSWORD`, `ADVERT_NAME`).
+- **Meshtastic:** `firmware/meshtastic/repo` — config applied at runtime via app or serial.
 
 Copy or adapt values from those locations into files here for versioned, shareable presets.

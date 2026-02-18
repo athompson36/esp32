@@ -1,0 +1,33 @@
+{
+  "id": "heltec_meshpocket_10000",
+  "name": "Heltec MeshPocket 10000mAh",
+  "mcu": "ESP32-S3",
+  "radios": [
+    "SX1262 LoRa"
+  ],
+  "display": "Built-in",
+  "battery": "10000mAh internal",
+  "storage": "SD slot; internal flash",
+  "flash_methods": [
+    "usb_direct",
+    "sd_launcher"
+  ],
+  "compatible_firmware": [
+    "meshtastic",
+    "launcher",
+    "bruce",
+    "ghost",
+    "marauder"
+  ],
+  "capability": {
+    "chip": "esp32s3",
+    "flash_size": "8MB",
+    "rf_bands": [
+      "868",
+      "915"
+    ],
+    "can_support": false,
+    "sd_support": true,
+    "launcher_compatible": true
+  }
+}

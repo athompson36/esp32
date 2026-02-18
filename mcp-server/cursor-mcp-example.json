@@ -1,12 +1,1 @@
-{
-  "mcpServers": {
-    "esp32-lab": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/esp32/mcp-server/dist/index.js"],
-      "cwd": "/ABSOLUTE/PATH/TO/esp32",
-      "env": {
-        "ESP32_LAB_REPO_ROOT": "/ABSOLUTE/PATH/TO/esp32"
-      }
-    }
-  }
-}
+{"mcpServers":{"cyber-lab":{"command":"node","args":["/ABSOLUTE/PATH/TO/cyber-lab/mcp-server/dist/index.js"],"cwd":"/ABSOLUTE/PATH/TO/cyber-lab","env":{"CYBER_LAB_REPO_ROOT":"/ABSOLUTE/PATH/TO/cyber-lab"}}}}

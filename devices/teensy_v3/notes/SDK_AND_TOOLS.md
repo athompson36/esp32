@@ -1,4 +1,4 @@
-# Teensy 3.2 — SDKs & Tools
+# Teensy v3.2 — SDKs & Tools
 
 **Device:** PJRC Teensy 3.2 (MK20DX256, Cortex-M4)  
 **Container:** platformio-lab  

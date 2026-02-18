@@ -1,4 +1,4 @@
-# Teensy 4.0 / 4.1 — Peripherals
+# Teensy v4.1 — Peripherals
 
 | Peripheral | Notes |
 |------------|--------|

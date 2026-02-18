@@ -49,7 +49,7 @@
 | [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) | Full backlog and roadmap items (L1–L15, G1–G11, T1–MC7). |
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | Phased task list; what to do in order. |
 | **PROJECT_CONTEXT.md** (this file) | Current phase, next actions, how to stay on task. |
-| [current_project.md](current_project.md) | ESP32/SBC project ideas and lab context links. |
+| [current_project.md](current_project.md) | Cyber-Lab project ideas (ESP32/SBC) and lab context links. |
 | [docker/TOOLS_AND_SDK.md](docker/TOOLS_AND_SDK.md) | SDKs and tools per device. |
 
 ---
@@ -66,10 +66,12 @@
 
 ## 6. MCP Server (Lab Context)
 
-The **lab MCP server** exposes project context, roadmap summary, and tools so assistants can stay aligned.
+The **lab MCP server** exposes project context, roadmap summary, setup wizards, and tools so assistants can stay aligned.
 
-- **Resources:** `project://context`, `project://roadmap`, `project://development-plan`
-- **Tools:** `get_project_status`, `get_next_tasks`, `get_device_context`, `list_devices`
+- **Resources:** `project://context`, `project://roadmap`, `project://development-plan`, `project://setup-context` (wizards and acceptability)
+- **Tools:** `get_project_status`, `get_next_tasks`, `get_device_context`, `list_devices`, `get_setup_help`
+
+Use **get_setup_help** or read **project://setup-context** when the user asks for setup recommendations or chat-style setup. See [docs/AGENT_SETUP_CONTEXT.md](docs/AGENT_SETUP_CONTEXT.md).
 
 See [mcp-server/README.md](mcp-server/README.md) for setup and Cursor configuration.
 

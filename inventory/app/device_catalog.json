@@ -1,0 +1,40 @@
+{
+  "vendors": [
+    {"id": "lilygo", "name": "LilyGo"},
+    {"id": "heltec", "name": "Heltec"},
+    {"id": "raspberry_pi", "name": "Raspberry Pi"},
+    {"id": "pine64", "name": "Pine64"},
+    {"id": "arduino", "name": "Arduino"},
+    {"id": "teensy", "name": "Teensy (PJRC)"}
+  ],
+  "flasher_image_base": "https://flasher.meshtastic.org/img/devices",
+  "devices": [
+    {"id": "t_beam_1w", "name": "T-Beam 1W", "vendor": "lilygo", "mcu": "ESP32-S3", "description": "ESP32-S3 + SX1262 LoRa 1W PA, GNSS, OLED", "flasher_image": "tbeam-1w.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "t_beam_v1", "name": "T-Beam v1", "vendor": "lilygo", "mcu": "ESP32", "description": "ESP32 + SX1276 LoRa, GNSS", "flasher_image": "tbeam.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "t_deck", "name": "T-Deck", "vendor": "lilygo", "mcu": "ESP32", "description": "ESP32 + keyboard, display, LoRa", "flasher_image": "t-deck.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "t_deck_plus", "name": "T-Deck Plus", "vendor": "lilygo", "mcu": "ESP32-S3", "description": "ESP32-S3 + keyboard, display, LoRa, SD, maps", "flasher_image": "t-deck.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "t_watch", "name": "T-Watch", "vendor": "lilygo", "mcu": "ESP32", "description": "ESP32 wearable with display", "flasher_image": "t-watch-s3.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "t_beam_s3_868", "name": "T-Beam S3 868", "vendor": "lilygo", "mcu": "ESP32-S3", "description": "ESP32-S3 + SX1262 868 MHz", "flasher_image": "tbeam-s3-core.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "heltec_t114_v3", "name": "Heltec T114 v3", "vendor": "heltec", "mcu": "ESP32", "description": "ESP32 + SX1262 LoRa, OLED", "flasher_image": "heltec-mesh-node-t114.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "heltec_t114_v4", "name": "Heltec T114 v4", "vendor": "heltec", "mcu": "ESP32", "description": "ESP32 + SX1262 LoRa, OLED (v4)", "flasher_image": "heltec-mesh-node-t114.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "heltec_meshpocket_10000", "name": "Heltec MeshPocket 10000mAh", "vendor": "heltec", "mcu": "ESP32", "description": "ESP32 LoRa with large battery", "flasher_image": "heltec_mesh_pocket.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "heltec_wireless_stick", "name": "Heltec Wireless Stick", "vendor": "heltec", "mcu": "ESP32", "description": "ESP32 + SX1276 LoRa stick", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "heltec_wireless_stick_lite", "name": "Heltec Wireless Stick Lite", "vendor": "heltec", "mcu": "ESP32", "description": "ESP32 + SX1276 LoRa stick (lite)", "flasher_image": "heltec-wsl-v3.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "espressif32", "default_install": true}},
+    {"id": "raspberry_pi_zero", "name": "Raspberry Pi Zero 2 W", "vendor": "raspberry_pi", "mcu": "BCM2710A1", "description": "ARM 64-bit SBC, 40-pin GPIO"},
+    {"id": "raspberry_pi_v4", "name": "Raspberry Pi 4 Model B", "vendor": "raspberry_pi", "mcu": "BCM2711", "description": "ARM 64-bit SBC, 40-pin GPIO"},
+    {"id": "raspberry_pi_v5", "name": "Raspberry Pi 5", "vendor": "raspberry_pi", "mcu": "BCM2712", "description": "ARM 64-bit SBC, 40-pin GPIO"},
+    {"id": "raspberry_pi_pico", "name": "Raspberry Pi Pico", "vendor": "raspberry_pi", "mcu": "RP2040", "description": "Dual-core ARM Cortex-M0+, MicroPython/C/C++", "flasher_image": "pico.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "raspberrypi", "default_install": true}},
+    {"id": "raspberry_pi_pico_w", "name": "Raspberry Pi Pico W", "vendor": "raspberry_pi", "mcu": "RP2040", "description": "Pico with WiFi", "flasher_image": "rpipicow.svg", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "raspberrypi", "default_install": true}},
+    {"id": "pine64", "name": "Pine A64", "vendor": "pine64", "mcu": "Allwinner A64", "description": "ARM SBC, Euler bus"},
+    {"id": "rock64", "name": "PINE64 Rock64", "vendor": "pine64", "mcu": "RK3328", "description": "ARM SBC, 40-pin RPi-compatible"},
+    {"id": "rockpro64", "name": "PINE64 RockPro64", "vendor": "pine64", "mcu": "RK3399", "description": "ARM SBC, 40-pin"},
+    {"id": "pine_phone", "name": "Pine64 PinePhone", "vendor": "pine64", "mcu": "Allwinner A64", "description": "Linux smartphone"},
+    {"id": "pine_time", "name": "Pine64 PineTime", "vendor": "pine64", "mcu": "nRF52832", "description": "Smartwatch, Zephyr"},
+    {"id": "arduino_uno", "name": "Arduino Uno R3", "vendor": "arduino", "mcu": "ATmega328P", "description": "8-bit AVR, 14 digital I/O, 6 analog", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "atmelavr", "default_install": true}},
+    {"id": "arduino_nano", "name": "Arduino Nano", "vendor": "arduino", "mcu": "ATmega328P", "description": "Compact Uno-like", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "atmelavr", "default_install": true}},
+    {"id": "arduino_mega", "name": "Arduino Mega 2560", "vendor": "arduino", "mcu": "ATmega2560", "description": "54 I/O, 16 analog", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "atmelavr", "default_install": true}},
+    {"id": "arduino_leonardo", "name": "Arduino Leonardo", "vendor": "arduino", "mcu": "ATmega32u4", "description": "USB native", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "atmelavr", "default_install": true}},
+    {"id": "teensy_v3", "name": "Teensy v3.2", "vendor": "teensy", "mcu": "MK20DX256", "description": "Cortex-M4, 72 MHz", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "teensy", "default_install": true}},
+    {"id": "teensy_v4", "name": "Teensy v4.1", "vendor": "teensy", "mcu": "i.MX RT1062", "description": "Cortex-M7, 600 MHz", "sdk": {"available": true, "install_type": "platformio_platform", "platform_id": "teensy", "default_install": true}}
+  ]
+}

@@ -1,4 +1,4 @@
-# Current ESP32 & SBC Projects
+# Current Cyber-Lab Projects (ESP32 & SBC)
 *Compiled for Andrew (athompson36) — projects either started, prototyped, or conceptualized involving ESP32 microcontrollers or single board computers (SBCs like Raspberry Pi).*
 
 ---

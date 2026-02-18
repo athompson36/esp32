@@ -39,8 +39,8 @@ Single-board LoRa node with ESP32-S3, Semtech SX1262 sub-GHz LoRa, 1W external P
 
 ## Firmware in This Lab
 
-- **MeshCore:** Companion (BLE), Repeater, Room Server — see `t-beam_1w/t-beam 1w meshcore` (to be linked under `firmware/meshcore/`).
-- **Meshtastic:** Port in progress — see `t-beam_1w/meshtastic-tbeam-1w-firmware` (to be linked under `firmware/meshtastic/`).
+- **MeshCore:** Companion (BLE), Repeater, Room Server — see `firmware/meshcore/repo/`.
+- **Meshtastic:** Port in progress — see `firmware/meshtastic/repo/`.
 
 ---
 
@@ -59,4 +59,4 @@ See **[shared/t_beam_1w/RF_PA_FAN_PMU.md](../../shared/t_beam_1w/RF_PA_FAN_PMU.m
 
 - LilyGO: [T-Beam 1W product](https://www.lilygo.cc/products/t-beam-1w)
 - Lab: [CONTEXT.md](../../CONTEXT.md), [FEATURE_ROADMAP.md](../../FEATURE_ROADMAP.md)
-- Fixes/improvements: [T-BEAM-1W-FIXES.md](../../t-beam_1w/t-beam%201w%20meshcore/T-BEAM-1W-FIXES.md), [MESHTASTIC-IMPROVEMENTS.md](../../t-beam_1w/t-beam%201w%20meshcore/MESHTASTIC-IMPROVEMENTS.md)
+- Fixes/improvements: [T-BEAM-1W-FIXES.md](firmware/meshcore/repo/T-BEAM-1W-FIXES.md), [MESHTASTIC-IMPROVEMENTS.md](firmware/meshcore/repo/MESHTASTIC-IMPROVEMENTS.md)

@@ -1,6 +1,6 @@
-# Teensy 3.2 — Firmware Repos
+# Teensy v3.2 — Firmware Repos
 
-**Full index:** [FIRMWARE_INDEX.md](../../../FIRMWARE_INDEX.md#teensy_v3-teensy-32)
+**Full index:** [FIRMWARE_INDEX.md](../../../FIRMWARE_INDEX.md#teensy_v3-teensy-v32)
 
 | Firmware / framework | Repo | Notes |
 |----------------------|------|--------|

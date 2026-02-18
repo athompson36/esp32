@@ -1,0 +1,18 @@
+{
+  "id": "rockpro64",
+  "name": "RockPro64",
+  "mcu": "RK3399",
+  "radios": ["Optional USB"],
+  "display": "HDMI",
+  "battery": "DC in",
+  "storage": "eMMC/SD",
+  "flash_methods": ["sd_image", "ssh"],
+  "compatible_firmware": ["linux", "armbian"],
+  "capability": {
+    "chip": "rk3399",
+    "can_support": true,
+    "sd_support": true,
+    "launcher_compatible": false,
+    "detection": "ssh"
+  }
+}

@@ -1,15 +1,1 @@
-{
-  "mcpServers": {
-    "esp32-lab": {
-      "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "-v", "/ABSOLUTE/PATH/TO/esp32:/workspace:ro",
-        "-e", "ESP32_LAB_REPO_ROOT=/workspace",
-        "esp32-lab-mcp"
-      ]
-    }
-  }
-}
+{"mcpServers":{"cyber-lab":{"command":"docker","args":["run","--rm","-i","-v","/ABSOLUTE/PATH/TO/cyber-lab:/workspace:ro","-e","CYBER_LAB_REPO_ROOT=/workspace","cyber-lab-mcp"]}}}

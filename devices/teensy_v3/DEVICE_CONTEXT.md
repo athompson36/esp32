@@ -1,4 +1,4 @@
-# Device Context — Teensy 3.2
+# Device Context — Teensy v3.2
 
 **Device ID:** `teensy_v3`  
 **Board:** PJRC Teensy 3.2 (MK20DX256, ARM Cortex-M4)  

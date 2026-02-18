@@ -1,0 +1,21 @@
+{
+  "id": "t_beam_1w",
+  "name": "LilyGO T-Beam 1W",
+  "mcu": "ESP32-S3",
+  "radios": ["SX1262 LoRa 868/915 MHz", "1W PA"],
+  "display": "SH1106 OLED 128×64 I2C",
+  "battery": "7.4V 2S LiPo, JST; AXP2101 PMU (optional)",
+  "storage": "internal flash 8MB; no SD",
+  "flash_methods": ["usb_direct"],
+  "compatible_firmware": ["meshcore", "meshtastic"],
+  "capability": {
+    "chip": "esp32s3",
+    "flash_size": "8MB",
+    "flash_mode": "dio",
+    "rf_bands": ["868", "915"],
+    "can_support": false,
+    "sd_support": false,
+    "launcher_compatible": false,
+    "secure_element": false
+  }
+}

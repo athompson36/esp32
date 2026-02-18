@@ -28,7 +28,7 @@
 | 1.1 | Create `shared/` and `shared/t_beam_1w/` | L12 | ✅ |
 | 1.2 | Move T-Beam 1W RF/PA/fan/PMU notes to `shared/t_beam_1w/` | L12 | ✅ |
 | 1.3 | Create `artifacts/` (and optionally .gitkeep or README) | L10 | ✅ |
-| 1.4 | Document device layout: symlink or copy strategy for `t-beam 1w meshcore` → device firmware | L1, L3 | ✅ |
+| 1.4 | Document device layout: symlink or copy strategy for `t-beam 1w meshcore` → device firmware | L1, L3 | ✅ (migrated to devices/t_beam_1w/firmware/meshcore/repo) |
 | 1.5 | Ensure `devices/t_beam_1w/` has firmware/, configs/, pinmaps/, notes/ and all context files | L2 | ✅ (already present) |
 | 1.6 | Add configs examples for Companion, Repeater, Room Server under device | T8–T10 | ✅ |
 

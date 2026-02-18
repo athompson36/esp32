@@ -1,6 +1,7 @@
 # Run inventory web app + AI tools in Docker.
-# From repo root: docker compose -f inventory/app/docker-compose.yml up --build
+# From repo root: docker compose -f inventory/app/docker-compose.yml up -d --build
 # Then open http://127.0.0.1:5050
+# restart: unless-stopped — container auto-restarts on failure and starts when Docker daemon starts.
 
 services:
   inventory:
@@ -18,4 +19,4 @@ services:
     volumes:
       # Mount whole repo: read inventory.db, YAML; write project proposals to artifacts/project_proposals
       - ../..:/workspace
-    restart: "no"
+    restart: unless-stopped

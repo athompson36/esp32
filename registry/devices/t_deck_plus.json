@@ -1,0 +1,37 @@
+{
+  "id": "t_deck_plus",
+  "name": "LilyGO T-Deck Plus",
+  "mcu": "ESP32-S3",
+  "radios": [
+    "SX1262 LoRa",
+    "display/keyboard deck"
+  ],
+  "display": "Built-in display + keyboard",
+  "battery": "Internal LiPo",
+  "storage": "SD card slot; internal flash 16MB",
+  "flash_methods": [
+    "usb_direct",
+    "sd_launcher"
+  ],
+  "compatible_firmware": [
+    "launcher",
+    "meshtastic",
+    "meshcore",
+    "bruce",
+    "ghost",
+    "marauder"
+  ],
+  "capability": {
+    "chip": "esp32s3",
+    "flash_size": "16MB",
+    "flash_mode": "dio",
+    "rf_bands": [
+      "868",
+      "915"
+    ],
+    "can_support": false,
+    "sd_support": true,
+    "launcher_compatible": true,
+    "secure_element": false
+  }
+}

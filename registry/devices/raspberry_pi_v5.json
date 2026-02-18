@@ -1,0 +1,18 @@
+{
+  "id": "raspberry_pi_v5",
+  "name": "Raspberry Pi 5",
+  "mcu": "BCM2712 + RP1",
+  "radios": ["Optional USB/BT/WiFi"],
+  "display": "HDMI; GPIO display possible",
+  "battery": "USB-C power",
+  "storage": "SD/microSD; NVMe possible",
+  "flash_methods": ["sd_image", "ssh"],
+  "compatible_firmware": ["linux", "launcher_linux"],
+  "capability": {
+    "chip": "bcm2712",
+    "can_support": true,
+    "sd_support": true,
+    "launcher_compatible": false,
+    "detection": "ssh"
+  }
+}

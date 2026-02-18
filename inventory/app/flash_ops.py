@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from datetime import datetime
 
-from config import ARTIFACTS_DIR, BACKUPS_DIR, FLASH_DEVICES, REPO_ROOT
+from config import ARTIFACTS_DIR, BACKUPS_DIR, FLASH_DEVICES, FIRMWARE_TARGETS, REPO_ROOT
 
 
 def list_serial_ports():
@@ -219,9 +219,14 @@ def flash_firmware(port: str, device_id: str, bin_path: str, addr: str = "0x0"):
     return ok, msg
 
 
-def list_artifacts_and_backups():
-    """Return list of { path, name, type: artifact|backup, device?, size }."""
+def list_artifacts_and_backups(firmware_filter=None):
+    """Return list of { path, name, type: artifact|backup, device?, firmware?, size }.
+    firmware_filter: if set (meshtastic|meshcore|launcher), only include artifacts under that firmware folder.
+    Backups are always included (no firmware filter)."""
     results = []
+    fw_filter = (firmware_filter or "").strip().lower()
+    if fw_filter and fw_filter not in FIRMWARE_TARGETS:
+        fw_filter = ""
     # Artifacts: artifacts/<device>/<firmware>/...
     if os.path.isdir(ARTIFACTS_DIR):
         for dev in os.listdir(ARTIFACTS_DIR):
@@ -231,6 +236,8 @@ def list_artifacts_and_backups():
             for fw in os.listdir(dev_path):
                 fw_path = os.path.join(dev_path, fw)
                 if not os.path.isdir(fw_path):
+                    continue
+                if fw_filter and fw.lower() != fw_filter:
                     continue
                 for name in os.listdir(fw_path):
                     full = os.path.join(fw_path, name)
@@ -243,6 +250,7 @@ def list_artifacts_and_backups():
                                     "name": f"{dev}/{fw}/{name}/{f}",
                                     "type": "artifact",
                                     "device": dev,
+                                    "firmware": fw,
                                     "size": os.path.getsize(p) if os.path.isfile(p) else 0,
                                 })
                     elif name.endswith(".bin"):
@@ -251,6 +259,7 @@ def list_artifacts_and_backups():
                             "name": f"{dev}/{fw}/{name}",
                             "type": "artifact",
                             "device": dev,
+                            "firmware": fw,
                             "size": os.path.getsize(full) if os.path.isfile(full) else 0,
                         })
     # Backups

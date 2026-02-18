@@ -1,11 +1,11 @@
 {
-  "name": "esp32-lab-mcp-server",
+  "name": "cyber-lab-mcp-server",
   "version": "1.0.0",
   "description": "MCP server exposing project context, roadmap, and development plan for the embedded firmware lab",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "esp32-lab-mcp": "dist/index.js"
+    "cyber-lab-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",

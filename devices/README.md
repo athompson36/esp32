@@ -61,8 +61,8 @@ See `t_beam_1w/` for the reference implementation.
 | Device | Description | Context |
 |--------|-------------|---------|
 | **arduino_uno** | Arduino Uno R3 (ATmega328P) | [DEVICE_CONTEXT.md](arduino_uno/DEVICE_CONTEXT.md) |
-| **teensy_v3** | PJRC Teensy 3.2 (MK20DX256, Cortex-M4) | [DEVICE_CONTEXT.md](teensy_v3/DEVICE_CONTEXT.md) |
-| **teensy_v4** | PJRC Teensy 4.0 / 4.1 (i.MX RT1062, Cortex-M7) | [DEVICE_CONTEXT.md](teensy_v4/DEVICE_CONTEXT.md) |
+| **teensy_v3** | PJRC Teensy v3.2 (MK20DX256, Cortex-M4) | [DEVICE_CONTEXT.md](teensy_v3/DEVICE_CONTEXT.md) |
+| **teensy_v4** | PJRC Teensy v4.1 (i.MX RT1062, Cortex-M7) | [DEVICE_CONTEXT.md](teensy_v4/DEVICE_CONTEXT.md) |
 
 ## Build Container
 

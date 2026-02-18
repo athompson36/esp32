@@ -1,4 +1,4 @@
-# Teensy 4.0 / 4.1 — SDKs & Tools
+# Teensy v4.1 — SDKs & Tools
 
 **Device:** PJRC Teensy 4.0 or 4.1 (i.MX RT1062, Cortex-M7)  
 **Container:** platformio-lab  

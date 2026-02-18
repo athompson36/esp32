@@ -120,6 +120,6 @@
 
 ## 6. Reference Documents
 
-- Pin assignments (MeshCore): `t-beam_1w/t-beam 1w meshcore/variants/lilygo_tbeam_1w_SX1262/platformio.ini`
-- Pin map (Meshtastic): `t-beam_1w/meshtastic-tbeam-1w-firmware/docs/TBEAM_1W_PINMAP.md`
-- Hardware fixes: `t-beam_1w/t-beam 1w meshcore/T-BEAM-1W-FIXES.md`, `MESHTASTIC-IMPROVEMENTS.md`
+- Pin assignments (MeshCore): `firmware/meshcore/repo/variants/lilygo_tbeam_1w_SX1262/platformio.ini`
+- Pin map (Meshtastic): `firmware/meshtastic/repo/docs/TBEAM_1W_PINMAP.md`
+- Hardware fixes: `firmware/meshcore/repo/T-BEAM-1W-FIXES.md`, `MESHTASTIC-IMPROVEMENTS.md`

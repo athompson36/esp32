@@ -1,0 +1,31 @@
+{
+  "presets": [
+    {
+      "id": "usa",
+      "name": "USA",
+      "region": "US",
+      "allowed_bands": ["902-928"],
+      "tx_power_limits_mw": 1000,
+      "channel_spacing_khz": 125,
+      "legal_warning": "FCC Part 15; stay within ISM band and power limits."
+    },
+    {
+      "id": "eu",
+      "name": "EU",
+      "region": "EU",
+      "allowed_bands": ["863-870"],
+      "tx_power_limits_mw": 25,
+      "channel_spacing_khz": 125,
+      "legal_warning": "ETSI; check local regulations for 868 MHz."
+    },
+    {
+      "id": "custom",
+      "name": "Custom",
+      "region": "custom",
+      "allowed_bands": [],
+      "tx_power_limits_mw": null,
+      "channel_spacing_khz": null,
+      "legal_warning": "User must ensure compliance with local regulations."
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Optional: Cyberdeck Manager CLI (Typer + Rich)
+# Rename to pyproject.toml in a dedicated venv or use as reference for cyberdeck_cli/
+[project]
+name = "cyberdeck-manager"
+version = "0.1.0"
+description = "Device, firmware, map, and flash lifecycle manager — CLI"
+readme = "docs/CYBERDECK_MANAGER_SPEC.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer[all]>=0.9.0",
+  "rich>=13.0.0",
+  "httpx>=0.25.0",
+  "pyserial>=3.5",
+  "esptool>=4.0",
+]
+
+[project.optional-dependencies]
+web = ["fastapi", "uvicorn"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+cyberdeck = "cyberdeck_cli.main:app"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

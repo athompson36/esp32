@@ -51,8 +51,9 @@ inventory/inventory.db
 local/
 secrets/
 
-# === Map datasets (large; uncomment if you don't want to track tiles) ===
+# === Map datasets (large; generated tile folders) ===
 # devices/t_deck_plus/maps/osm_tiles/
+tiles_*/
 
 # === Upstream firmware clones (clone into these paths per CONTEXT.md) ===
 t-beam_1w/t-beam 1w meshcore/

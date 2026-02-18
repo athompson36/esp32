@@ -1,4 +1,4 @@
-# Device Context — Teensy 4.0 / 4.1
+# Device Context — Teensy v4.1
 
 **Device ID:** `teensy_v4`  
 **Board:** PJRC Teensy 4.0 or 4.1 (IMXRT1062, ARM Cortex-M7)  

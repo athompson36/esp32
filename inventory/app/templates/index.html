@@ -5,8 +5,12 @@
     <button type="button" class="tab-btn" role="tab" id="tab-btn-settings" data-tab="settings" aria-selected="false">AI settings</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-docker" data-tab="docker" aria-selected="false">Docker &amp; tools</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-flash" data-tab="flash" aria-selected="false">Backup / Flash</button>
+    <button type="button" class="tab-btn" role="tab" id="tab-btn-device-config" data-tab="device-config" aria-selected="false">Device config</button>
+    <button type="button" class="tab-btn" role="tab" id="tab-btn-debug" data-tab="debug" aria-selected="false">Debug</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-projects" data-tab="projects" aria-selected="false">Project planning</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-inventory" data-tab="inventory" aria-selected="false">Inventory</button>
+    <button type="button" class="tab-btn" role="tab" id="tab-btn-setup-help" data-tab="setup-help" aria-selected="false">Setup help</button>
+    <button type="button" class="tab-btn" role="tab" id="tab-btn-add-device" data-tab="add-device" aria-selected="false">Add device</button>
   </nav>
 
   <div class="tab-panels">
@@ -63,7 +67,7 @@
     <div class="settings-fields">
       <div class="settings-row">
         <label for="settings-docker-container">Docker container</label>
-        <input type="text" id="settings-docker-container" placeholder="Container name or ID (e.g. esp32-lab-mcp)" autocomplete="off">
+        <input type="text" id="settings-docker-container" placeholder="Container name or ID (e.g. cyber-lab-mcp)" autocomplete="off">
       </div>
       <div class="settings-row">
         <label for="settings-frontend-path">Frontend path</label>
@@ -126,7 +130,7 @@
       <h2 class="flash-heading">Backup / Restore / Flash</h2>
       <button type="button" id="btn-flash-refresh" class="btn-refresh">Refresh &amp; detect devices</button>
     </div>
-    <p class="flash-note">Firmware and settings: backup to .bin, restore from .bin, or flash a build. Click <strong>Refresh &amp; detect devices</strong> to auto-detect connected ESP32 boards (port and chip). Device must be connected via USB; <strong>esptool</strong> must be installed on the host.</p>
+    <p class="flash-note">All flashing is <strong>internal</strong> (this app, esptool) and <strong>launcher/firmware compatible</strong> based on your selection. Backup to .bin, restore from .bin, or flash a build. Choose a <strong>Firmware target</strong> to filter artifacts (Meshtastic, MeshCore, Launcher). Click <strong>Refresh &amp; detect devices</strong> to auto-detect connected ESP32 boards (port and chip). Device must be connected via USB; <strong>esptool</strong> must be installed on the host.</p>
     <div class="flash-sd-note" role="note">SD card: devices with an SD slot (e.g. T-Beam) are not backed up or restored through this interface. Remove the card and use host tools (e.g. disk image / dd) to image or restore the SD.</div>
     <div class="flash-controls">
       <div class="flash-row">
@@ -138,6 +142,13 @@
         <label for="flash-device">Device</label>
         <select id="flash-device">
           <option value="">— Select device —</option>
+        </select>
+        <label for="flash-firmware-target">Firmware target</label>
+        <select id="flash-firmware-target" title="Filter flash/restore file list by firmware family (internal, launcher compatible)">
+          <option value="">All</option>
+          <option value="meshtastic">Meshtastic</option>
+          <option value="meshcore">MeshCore</option>
+          <option value="launcher">Launcher</option>
         </select>
       </div>
       <div class="flash-actions">
@@ -163,6 +174,7 @@
         </div>
         <div class="flash-action-block">
           <h3>Flash</h3>
+          <p class="flash-internal-note">Internal flash only; file list filtered by Firmware target above.</p>
           <select id="flash-flash-file">
             <option value="">— Select file or upload —</option>
           </select>
@@ -220,6 +232,7 @@
                   <th>Qty</th>
                   <th>On hand</th>
                   <th>Shortfall</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="project-bom-tbody"></tbody>
@@ -278,7 +291,234 @@
   </section>
   </section>
 
+  <section class="tab-panel" id="panel-device-config" role="tabpanel" aria-labelledby="tab-btn-device-config" hidden>
+  <section class="device-config-section" id="device-config-section">
+    <h2 class="device-config-heading">Device configuration wizard</h2>
+    <p class="device-config-note">Guide through full device configuration, pre- or post-flash, for Meshtastic, MeshCore, or Launcher (internal or launcher compatible). Save presets and use the AI to assist at any step.</p>
+    <div class="config-wizard-wrap">
+      <div class="config-wizard-steps">
+        <div id="config-wizard-step-indicator" class="config-wizard-step-indicator" aria-live="polite"></div>
+        <div id="config-wizard-step-1" class="config-wizard-step" data-step="1">
+          <h3>1. When to configure</h3>
+          <div class="config-wizard-field">
+            <label><input type="radio" name="config-when" value="pre" checked> Pre-flash — set options first, then flash</label>
+            <label><input type="radio" name="config-when" value="post"> Post-flash — device already flashed, configure now</label>
+          </div>
+        </div>
+        <div id="config-wizard-step-2" class="config-wizard-step" data-step="2">
+          <h3>2. Device</h3>
+          <div class="config-wizard-field">
+            <label for="config-wizard-device">Device</label>
+            <select id="config-wizard-device">
+              <option value="">— Select device —</option>
+            </select>
+          </div>
+        </div>
+        <div id="config-wizard-step-3" class="config-wizard-step" data-step="3">
+          <h3>3. Firmware target</h3>
+          <div class="config-wizard-field">
+            <label for="config-wizard-firmware">Firmware (internal or Launcher)</label>
+            <select id="config-wizard-firmware">
+              <option value="">— Select firmware —</option>
+            </select>
+          </div>
+        </div>
+        <div id="config-wizard-step-4" class="config-wizard-step" data-step="4">
+          <h3>4. Options</h3>
+          <div class="config-wizard-options">
+            <div class="config-wizard-field">
+              <label for="config-wizard-region">Region (RF)</label>
+              <select id="config-wizard-region">
+                <option value="">— Select region —</option>
+              </select>
+            </div>
+            <div class="config-wizard-field">
+              <label for="config-wizard-device-name">Device name</label>
+              <input type="text" id="config-wizard-device-name" placeholder="e.g. My T-Beam" autocomplete="off">
+            </div>
+            <div class="config-wizard-field">
+              <label for="config-wizard-preset-name">Preset name (for saving)</label>
+              <input type="text" id="config-wizard-preset-name" placeholder="e.g. home-usa" autocomplete="off">
+            </div>
+          </div>
+        </div>
+        <div id="config-wizard-step-5" class="config-wizard-step" data-step="5">
+          <h3>5. Review &amp; apply</h3>
+          <div id="config-wizard-review" class="config-wizard-review"></div>
+          <div class="config-wizard-actions">
+            <button type="button" id="config-wizard-save-preset" class="btn-refresh">Save preset</button>
+            <button type="button" id="config-wizard-goto-flash" class="btn-refresh">Go to Backup / Flash</button>
+          </div>
+          <span id="config-wizard-result" class="flash-status" aria-live="polite"></span>
+        </div>
+        <div class="config-wizard-nav">
+          <button type="button" id="config-wizard-prev" class="btn-refresh">Previous</button>
+          <button type="button" id="config-wizard-next" class="btn-refresh">Next</button>
+        </div>
+      </div>
+      <div class="config-wizard-ai">
+        <h3 class="config-wizard-ai-heading">AI assist</h3>
+        <p class="config-wizard-ai-note">Ask for help with region, device name, or any step. The AI sees your current wizard state.</p>
+        <div id="config-wizard-ai-messages" class="config-wizard-ai-messages" aria-live="polite"></div>
+        <div class="config-wizard-ai-input">
+          <input type="text" id="config-wizard-ai-input" placeholder="e.g. Which region for USA? What TX power is safe?" autocomplete="off">
+          <button type="button" id="config-wizard-ai-send">Ask</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  </section>
+
+  <section class="tab-panel" id="panel-debug" role="tabpanel" aria-labelledby="tab-btn-debug" hidden>
+  <section class="debug-section" id="debug-section">
+    <h2 class="debug-heading">Debug — live device logs &amp; troubleshooting</h2>
+    <p class="debug-note">Serial monitor shows live output from a connected device. Maintenance tools help diagnose port, esptool, and database issues. The AI (Setup help) has access to this context and will suggest fixes when problems are detected.</p>
+    <div class="debug-serial-block">
+      <h3 class="debug-subheading">Live device logs (serial monitor)</h3>
+      <div class="debug-serial-controls">
+        <label for="debug-serial-port">Port</label>
+        <select id="debug-serial-port">
+          <option value="">— Select port —</option>
+        </select>
+        <button type="button" id="debug-serial-start" class="btn-refresh">Start</button>
+        <button type="button" id="debug-serial-stop" class="btn-refresh">Stop</button>
+        <span id="debug-serial-status" class="flash-status" aria-live="polite"></span>
+      </div>
+      <pre id="debug-serial-log" class="debug-serial-log" aria-label="Serial output"></pre>
+    </div>
+    <div class="debug-tools-block">
+      <h3 class="debug-subheading">Maintenance &amp; troubleshooting</h3>
+      <div class="debug-tools-actions">
+        <button type="button" id="debug-tool-ports" class="btn-refresh">List ports</button>
+        <button type="button" id="debug-tool-esptool" class="btn-refresh">Esptool version</button>
+        <button type="button" id="debug-tool-health" class="btn-refresh">Run health check</button>
+      </div>
+      <div id="debug-tools-output" class="debug-tools-output" aria-live="polite"></div>
+    </div>
+  </section>
+  </section>
+
+  <section class="tab-panel" id="panel-setup-help" role="tabpanel" aria-labelledby="tab-btn-setup-help" hidden>
+  <section class="setup-help-section" id="setup-help-section">
+    <h2 class="setup-help-heading">Setup help</h2>
+    <p class="setup-help-note">Ask for setup recommendations, step-by-step wizard guidance, or what’s allowed in each area (paths, flash, map tiles, project planning, device registry, Docker). The AI can see your Debug tab context (serial logs, health) and will suggest fixes when problems are detected.</p>
+    <div id="setup-help-problems-banner" class="setup-help-problems-banner" hidden aria-live="polite">
+      <strong>Problems detected.</strong> <span id="setup-help-problems-text"></span>
+      <button type="button" id="setup-help-ask-fixes" class="btn-refresh">Ask AI for suggestions</button>
+    </div>
+    <div class="setup-help-chat">
+      <div id="setup-help-messages" class="project-messages" aria-live="polite"></div>
+      <div class="project-chat-input">
+        <input type="text" id="setup-help-message" placeholder="e.g. How do I set paths? What backup types are valid?" autocomplete="off">
+        <button type="button" id="btn-setup-help-send">Send</button>
+      </div>
+    </div>
+  </section>
+  </section>
+
+  <section class="tab-panel" id="panel-add-device" role="tabpanel" aria-labelledby="tab-btn-add-device" hidden>
+  <section class="add-device-section" id="add-device-section">
+    <h2 class="add-device-heading">Add device wizard</h2>
+    <p class="add-device-note">Choose a device from the catalog (LilyGo, Heltec, Raspberry Pi, Pine64, Arduino, Teensy). Add documentation and firmware links; the wizard creates <code>devices/&lt;id&gt;/</code> and <code>registry/devices/</code> with the correct structure.</p>
+    <div class="add-device-wizard">
+      <div class="add-device-filters">
+        <label for="device-wizard-vendor">Vendor</label>
+        <select id="device-wizard-vendor">
+          <option value="">All vendors</option>
+        </select>
+        <label for="device-wizard-search">Search</label>
+        <input type="text" id="device-wizard-search" placeholder="Search by name, ID, MCU…" autocomplete="off">
+        <label class="add-device-show-images-label">
+          <input type="checkbox" id="device-wizard-show-images" autocomplete="off">
+          Show device images
+        </label>
+      </div>
+      <div class="add-device-list-preview">
+        <div class="add-device-list-wrap">
+          <div id="device-wizard-list" class="add-device-list" aria-live="polite"></div>
+        </div>
+        <div id="device-wizard-preview" class="add-device-preview" hidden aria-hidden="true">
+          <div class="add-device-preview-card">
+            <img id="device-wizard-preview-img" src="" alt="" role="presentation">
+            <span id="device-wizard-preview-name" class="add-device-preview-name"></span>
+          </div>
+        </div>
+      </div>
+      <div id="device-wizard-form-wrap" class="add-device-form-wrap" hidden>
+        <h3 class="add-device-form-heading">Create device structure</h3>
+        <div class="add-device-form">
+          <div class="settings-row">
+            <label for="device-form-id">Device ID</label>
+            <input type="text" id="device-form-id" placeholder="e.g. t_beam_1w" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label for="device-form-name">Name</label>
+            <input type="text" id="device-form-name" placeholder="Display name" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label for="device-form-mcu">MCU</label>
+            <input type="text" id="device-form-mcu" placeholder="e.g. ESP32-S3" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label for="device-form-datasheet">Datasheet URL</label>
+            <input type="url" id="device-form-datasheet" placeholder="https://…" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label for="device-form-schematic">Schematic URL</label>
+            <input type="url" id="device-form-schematic" placeholder="https://…" autocomplete="off">
+          </div>
+          <div class="settings-row">
+            <label>Firmware repo URLs</label>
+            <div id="device-form-firmware-repos">
+              <input type="url" class="device-form-repo" placeholder="https://github.com/…" autocomplete="off">
+            </div>
+            <button type="button" id="device-form-add-repo" class="btn-refresh">Add another repo</button>
+          </div>
+          <div class="settings-row add-device-sdk-row" id="device-form-sdk-row" hidden>
+            <label>
+              <input type="checkbox" id="device-form-install-sdk" autocomplete="off" checked>
+              Install device SDK (recommended)
+            </label>
+            <span class="add-device-sdk-hint" id="device-form-sdk-hint">PlatformIO platform will be installed so builds work for this device.</span>
+          </div>
+          <div class="settings-row add-device-inventory-row">
+            <label>
+              <input type="checkbox" id="device-form-add-to-inventory" autocomplete="off">
+              Add to inventory catalog
+            </label>
+          </div>
+          <div id="device-form-inventory-category-wrap" class="settings-row add-device-inventory-category" hidden>
+            <label for="device-form-inventory-category">Inventory category</label>
+            <select id="device-form-inventory-category">
+              <option value="controller">Controller (MCU boards, dev kits)</option>
+              <option value="sbc">SBC (Raspberry Pi, Pine64, etc.)</option>
+              <option value="sensor">Sensor</option>
+              <option value="accessory">Accessory</option>
+              <option value="component">Component</option>
+            </select>
+          </div>
+        </div>
+        <div class="add-device-form-actions">
+          <button type="button" id="device-form-submit" class="btn-refresh">Create device structure</button>
+          <button type="button" id="device-form-cancel" class="btn-refresh">Cancel</button>
+        </div>
+        <div id="device-wizard-result" class="flash-status" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+  </section>
+
   <section class="tab-panel" id="panel-inventory" role="tabpanel" aria-labelledby="tab-btn-inventory" hidden>
+  <section class="inventory-filters">
+    <input type="text" id="inventory-search" placeholder="Search…" autocomplete="off">
+    <select id="inventory-category">
+      <option value="">All categories</option>
+    </select>
+    <select id="inventory-manufacturer">
+      <option value="">All manufacturers</option>
+    </select>
+    <button type="button" id="inventory-btn-apply">Apply</button>
+  </section>
   <section class="results-header">
     <span id="results-count">—</span> items
   </section>
@@ -287,11 +527,12 @@
     <table class="inventory-table" id="inventory-table">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Category</th>
-          <th>Qty</th>
-          <th>Part #</th>
-          <th>Location</th>
+          <th class="sortable" data-sort="name" title="Sort by name">Name</th>
+          <th class="sortable" data-sort="category" title="Sort by category">Category</th>
+          <th class="sortable" data-sort="quantity" title="Sort by quantity">Qty</th>
+          <th class="sortable" data-sort="part_number" title="Sort by part number">Part #</th>
+          <th class="sortable" data-sort="location" title="Sort by location">Location</th>
+          <th class="sortable" data-sort="manufacturer" title="Sort by manufacturer">Manufacturer</th>
           <th>Datasheet</th>
         </tr>
       </thead>

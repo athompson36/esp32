@@ -8,6 +8,8 @@ REPO_ROOT = os.environ.get("REPO_ROOT") or os.path.dirname(os.path.dirname(BASE_
 INVENTORY_DIR = os.path.join(REPO_ROOT, "inventory")
 DB_PATH = os.path.join(INVENTORY_DIR, "inventory.db")
 ARTIFACTS_DIR = os.path.join(REPO_ROOT, "artifacts")
+# Persistent device/serial logs for AI and troubleshooting (historical logs)
+DEVICE_LOGS_DIR = os.path.join(ARTIFACTS_DIR, "device_logs")
 
 # AI settings file (persisted in artifacts; env OPENAI_API_KEY overrides file)
 AI_SETTINGS_PATH = os.path.join(ARTIFACTS_DIR, "ai_settings.json")
@@ -161,6 +163,9 @@ FLASH_DEVICES = {
 # Backups stored here (relative to REPO_ROOT); create if missing
 BACKUPS_DIR = os.path.join(REPO_ROOT, "artifacts", "backups")
 
+# Firmware targets for flash UI: filter artifacts by Meshtastic / MeshCore / Launcher / Bruce / Ghost / Marauder / Flipper (folder names under artifacts/<device>/)
+FIRMWARE_TARGETS = ["meshtastic", "meshcore", "launcher", "bruce", "ghost", "marauder", "flipper_firmware", "unleashed", "roguemaster"]
+
 # Project proposals (saved in container mount under REPO_ROOT)
 PROJECT_PROPOSALS_DIR = os.path.join(REPO_ROOT, "artifacts", "project_proposals")
 
@@ -168,11 +173,11 @@ PROJECT_PROPOSALS_DIR = os.path.join(REPO_ROOT, "artifacts", "project_proposals"
 BUILD_CONFIG = {
     "t_beam_1w": {
         "meshcore": {
-            "path": "t-beam_1w/t-beam 1w meshcore",
+            "path": "devices/t_beam_1w/firmware/meshcore/repo",
             "envs": ["T_Beam_1W_SX1262_repeater", "T_Beam_1W_SX1262_room_server", "T_Beam_1W_SX1262_companion_radio_ble"],
         },
         "meshtastic": {
-            "path": "t-beam_1w/meshtastic-tbeam-1w-firmware",
+            "path": "devices/t_beam_1w/firmware/meshtastic/repo",
             "envs": ["tbeam-1w"],
         },
     },

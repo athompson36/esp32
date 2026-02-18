@@ -34,6 +34,10 @@
     targetBtn.classList.add("active");
     targetBtn.setAttribute("aria-selected", "true");
     try { sessionStorage.setItem(TAB_STORAGE_KEY, tabId); } catch (e) {}
+    if (tabId === "inventory") {
+      loadManufacturers();
+      fetchItems(buildInventoryQueryParams());
+    }
   }
 
   function initTabs() {
@@ -64,16 +68,48 @@
     fetch("/api/categories")
       .then((r) => r.json())
       .then((data) => {
+        const cats = data.categories || [];
         categoryEl.innerHTML = '<option value="">All categories</option>';
-        (data.categories || []).forEach((cat) => {
+        cats.forEach((cat) => {
           const opt = document.createElement("option");
           opt.value = cat;
           opt.textContent = cat;
           categoryEl.appendChild(opt);
         });
+        const invCat = document.getElementById("inventory-category");
+        if (invCat) {
+          invCat.innerHTML = '<option value="">All categories</option>';
+          cats.forEach((cat) => {
+            const opt = document.createElement("option");
+            opt.value = cat;
+            opt.textContent = cat;
+            invCat.appendChild(opt);
+          });
+        }
       })
       .catch((err) => console.error(err));
   }
+
+  function loadManufacturers() {
+    const el = document.getElementById("inventory-manufacturer");
+    if (!el) return;
+    fetch("/api/items/manufacturers")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.manufacturers || [];
+        el.innerHTML = '<option value="">All manufacturers</option>';
+        list.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          el.appendChild(opt);
+        });
+      })
+      .catch(() => {});
+  }
+
+  let inventorySortColumn = "category";
+  let inventorySortOrder = "asc";
 
   function buildQueryParams() {
     const params = new URLSearchParams();
@@ -81,6 +117,23 @@
     const cat = categoryEl.value.trim();
     if (q) params.set("q", q);
     if (cat) params.set("category", cat);
+    params.set("limit", "500");
+    return params.toString();
+  }
+
+  function buildInventoryQueryParams() {
+    const params = new URLSearchParams();
+    const invSearch = document.getElementById("inventory-search");
+    const invCat = document.getElementById("inventory-category");
+    const invMfr = document.getElementById("inventory-manufacturer");
+    const q = (invSearch && invSearch.value || "").trim();
+    const cat = (invCat && invCat.value || "").trim();
+    const mfr = (invMfr && invMfr.value || "").trim();
+    if (q) params.set("q", q);
+    if (cat) params.set("category", cat);
+    if (mfr) params.set("manufacturer", mfr);
+    params.set("sort", inventorySortColumn);
+    params.set("order", inventorySortOrder);
     params.set("limit", "500");
     return params.toString();
   }
@@ -97,6 +150,7 @@
         <td class="qty">${it.quantity != null ? it.quantity : ""}</td>
         <td>${escapeHtml(it.part_number || "")}</td>
         <td>${escapeHtml(it.location || "")}</td>
+        <td>${escapeHtml(it.manufacturer || "")}</td>
         <td>${it.datasheet_url ? '<a href="' + escapeHtml(it.datasheet_url) + '" target="_blank" rel="noopener">Link</a>' : ""}</td>
       </tr>
     `
@@ -239,6 +293,7 @@
             : "—";
         const tagsStr = item.tags && item.tags.length ? item.tags.join(", ") : "—";
         const usedInStr = item.used_in && item.used_in.length ? item.used_in.join(", ") : "—";
+        const qty = item.quantity != null ? item.quantity : 1;
         detailContent.innerHTML = `
           <h2>${escapeHtml(item.name)}</h2>
           <dl>
@@ -255,7 +310,52 @@
             <dt>Notes</dt><dd>${escapeHtml(item.notes || "—")}</dd>
             ${item.datasheet_url ? "<dt>Datasheet</dt><dd><a href=\"" + escapeHtml(item.datasheet_url) + "\" target=\"_blank\" rel=\"noopener\">Open</a></dd>" : ""}
           </dl>
+          <div class="detail-add-to-project" id="detail-add-to-project">
+            <h3>Add to project</h3>
+            <p class="detail-add-hint">Add this item to a project&rsquo;s BOM.</p>
+            <select id="detail-add-to-project-select"><option value="">Select project…</option></select>
+            <label for="detail-add-to-project-qty">Qty</label>
+            <input type="number" id="detail-add-to-project-qty" min="1" value="${qty}">
+            <button type="button" id="detail-add-to-project-btn">Add to project</button>
+            <span id="detail-add-to-project-status" class="flash-status"></span>
+          </div>
         `;
+        const sel = document.getElementById("detail-add-to-project-select");
+        const statusEl = document.getElementById("detail-add-to-project-status");
+        fetch("/api/projects")
+          .then((r) => r.json())
+          .then((data) => {
+            (data.projects || []).forEach((p) => {
+              const opt = document.createElement("option");
+              opt.value = p.id;
+              opt.textContent = p.title || p.id;
+              sel.appendChild(opt);
+            });
+          })
+          .catch(() => {});
+        document.getElementById("detail-add-to-project-btn").addEventListener("click", () => {
+          const projectId = (sel.value || "").trim();
+          if (!projectId) {
+            if (statusEl) { statusEl.textContent = "Select a project."; statusEl.className = "flash-status flash-error"; }
+            return;
+          }
+          const qtyInput = document.getElementById("detail-add-to-project-qty");
+          const quantity = Math.max(1, parseInt(qtyInput.value, 10) || 1);
+          statusEl.textContent = "";
+          fetch("/api/projects/" + encodeURIComponent(projectId) + "/bom/items", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ item_id: item.id, quantity }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.error) throw new Error(data.error);
+              if (statusEl) { statusEl.textContent = "Added to BOM."; statusEl.className = "flash-status flash-ok"; }
+            })
+            .catch((err) => {
+              if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
+            });
+        });
         detailPanel.hidden = false;
       })
       .catch(() => {
@@ -531,8 +631,11 @@
   function loadFlashArtifacts() {
     const restoreSel = document.getElementById("flash-restore-file");
     const flashSel = document.getElementById("flash-flash-file");
+    const firmwareTargetSel = document.getElementById("flash-firmware-target");
     if (!restoreSel || !flashSel) return;
-    fetch("/api/flash/artifacts")
+    const firmware = (firmwareTargetSel?.value || "").trim();
+    const url = "/api/flash/artifacts" + (firmware ? "?firmware=" + encodeURIComponent(firmware) : "");
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
         const list = data.files || data.artifacts || [];
@@ -675,6 +778,302 @@
       loadFlashArtifacts();
     });
   }
+  const flashFirmwareTargetSel = document.getElementById("flash-firmware-target");
+  if (flashFirmwareTargetSel) {
+    flashFirmwareTargetSel.addEventListener("change", loadFlashArtifacts);
+  }
+
+  // --- Device configuration wizard (pre/post flash, internal or Launcher) ---
+  (function initDeviceConfigWizard() {
+    const panel = document.getElementById("panel-device-config");
+    const stepIndicator = document.getElementById("config-wizard-step-indicator");
+    const deviceSel = document.getElementById("config-wizard-device");
+    const firmwareSel = document.getElementById("config-wizard-firmware");
+    const regionSel = document.getElementById("config-wizard-region");
+    const deviceNameInp = document.getElementById("config-wizard-device-name");
+    const presetNameInp = document.getElementById("config-wizard-preset-name");
+    const reviewEl = document.getElementById("config-wizard-review");
+    const resultEl = document.getElementById("config-wizard-result");
+    const btnSavePreset = document.getElementById("config-wizard-save-preset");
+    const btnGotoFlash = document.getElementById("config-wizard-goto-flash");
+    const btnPrev = document.getElementById("config-wizard-prev");
+    const btnNext = document.getElementById("config-wizard-next");
+    const aiMessages = document.getElementById("config-wizard-ai-messages");
+    const aiInput = document.getElementById("config-wizard-ai-input");
+    const btnAiSend = document.getElementById("config-wizard-ai-send");
+
+    let wizardContext = { devices: [], firmware_targets: [], rf_presets: [] };
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function getStepEl(n) { return document.querySelector(".config-wizard-step[data-step=\"" + n + "\"]"); }
+    function getOptions() {
+      const when = document.querySelector("input[name=\"config-when\"]:checked");
+      return {
+        when: when ? when.value : "pre",
+        device_id: deviceSel?.value?.trim() || "",
+        firmware: firmwareSel?.value?.trim() || "",
+        region: regionSel?.value?.trim() || "",
+        device_name: deviceNameInp?.value?.trim() || "",
+        preset_name: presetNameInp?.value?.trim() || "",
+      };
+    }
+
+    function renderSteps() {
+      for (let i = 1; i <= totalSteps; i++) {
+        const el = getStepEl(i);
+        if (el) el.style.display = currentStep === i ? "block" : "none";
+      }
+      if (stepIndicator) stepIndicator.textContent = "Step " + currentStep + " of " + totalSteps;
+      if (btnPrev) btnPrev.style.visibility = currentStep > 1 ? "visible" : "hidden";
+      if (btnNext) {
+        btnNext.textContent = currentStep < totalSteps ? "Next" : "Finish";
+        btnNext.style.visibility = "visible";
+      }
+      if (currentStep === 5 && reviewEl) {
+        const o = getOptions();
+        reviewEl.textContent = "When: " + (o.when === "pre" ? "Pre-flash" : "Post-flash") + "\nDevice: " + (o.device_id || "—") + "\nFirmware: " + (o.firmware || "—") + "\nRegion: " + (o.region || "—") + "\nDevice name: " + (o.device_name || "—") + "\nPreset name: " + (o.preset_name || "—");
+      }
+    }
+
+    function loadContext() {
+      fetch("/api/config-wizard/context")
+        .then((r) => r.json())
+        .then((data) => {
+          wizardContext = data;
+          if (deviceSel) {
+            deviceSel.innerHTML = "<option value=\"\">— Select device —</option>" + (data.devices || []).map((d) => "<option value=\"" + escapeHtml(d.id) + "\">" + escapeHtml(d.name || d.id) + "</option>").join("");
+          }
+          if (regionSel) {
+            regionSel.innerHTML = "<option value=\"\">— Select region —</option>" + (data.rf_presets || []).map((p) => "<option value=\"" + escapeHtml(p.id) + "\">" + escapeHtml(p.name || p.id) + " " + (p.legal_warning ? "(" + p.legal_warning.substring(0, 40) + "…)" : "") + "</option>").join("");
+          }
+          renderSteps();
+        })
+        .catch(() => {});
+    }
+
+    deviceSel?.addEventListener("change", () => {
+      const id = deviceSel.value;
+      const dev = (wizardContext.devices || []).find((d) => d.id === id);
+      if (!firmwareSel) return;
+      const compat = dev ? (dev.compatible_firmware || []) : [];
+      firmwareSel.innerHTML = "<option value=\"\">— Select firmware —</option>" + (wizardContext.firmware_targets || []).filter((f) => compat.indexOf(f.id) >= 0).map((f) => "<option value=\"" + escapeHtml(f.id) + "\">" + escapeHtml(f.name) + (f.internal ? " (internal)" : " (Launcher)") + "</option>").join("");
+    });
+
+    btnPrev?.addEventListener("click", () => { if (currentStep > 1) { currentStep--; renderSteps(); } });
+    btnNext?.addEventListener("click", () => {
+      if (currentStep < totalSteps) { currentStep++; renderSteps(); } else { currentStep = 5; renderSteps(); }
+    });
+
+    btnSavePreset?.addEventListener("click", () => {
+      const o = getOptions();
+      if (!o.device_id || !o.firmware) {
+        if (resultEl) { resultEl.textContent = "Select device and firmware first."; resultEl.className = "flash-status flash-error"; }
+        return;
+      }
+      const presetName = o.preset_name || "preset_" + Date.now();
+      if (resultEl) resultEl.textContent = "Saving…";
+      fetch("/api/config-wizard/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: o.device_id,
+          firmware: o.firmware,
+          preset_name: presetName,
+          options: { region: o.region, device_name: o.device_name },
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            if (resultEl) { resultEl.textContent = "Saved: " + (data.path || ""); resultEl.className = "flash-status flash-ok"; }
+          } else {
+            if (resultEl) { resultEl.textContent = data.error || "Failed"; resultEl.className = "flash-status flash-error"; }
+          }
+        })
+        .catch((err) => { if (resultEl) { resultEl.textContent = "Error: " + err.message; resultEl.className = "flash-status flash-error"; } });
+    });
+
+    btnGotoFlash?.addEventListener("click", () => {
+      const tab = document.getElementById("tab-btn-flash");
+      if (tab) tab.click();
+    });
+
+    btnAiSend?.addEventListener("click", () => {
+      const msg = (aiInput?.value || "").trim();
+      if (!msg || !aiMessages) return;
+      const o = getOptions();
+      const userDiv = document.createElement("div");
+      userDiv.className = "msg";
+      userDiv.textContent = "You: " + msg;
+      aiMessages.appendChild(userDiv);
+      aiMessages.scrollTop = aiMessages.scrollHeight;
+      if (aiInput) aiInput.value = "";
+      fetch("/api/config-wizard/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: msg,
+          step: "step_" + currentStep,
+          device_id: o.device_id,
+          firmware: o.firmware,
+          options: { region: o.region, device_name: o.device_name },
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const replyDiv = document.createElement("div");
+          replyDiv.className = "msg";
+          replyDiv.textContent = "AI: " + (data.reply || "(No reply)");
+          aiMessages.appendChild(replyDiv);
+          aiMessages.scrollTop = aiMessages.scrollHeight;
+        })
+        .catch((err) => {
+          const errDiv = document.createElement("div");
+          errDiv.className = "msg";
+          errDiv.textContent = "Error: " + err.message;
+          aiMessages.appendChild(errDiv);
+        });
+    });
+    aiInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") btnAiSend?.click(); });
+
+    const obs = new MutationObserver((mutations) => {
+      mutations.forEach((m) => { if (m.attributeName === "hidden" && panel && !panel.hidden) loadContext(); });
+    });
+    if (panel) obs.observe(panel, { attributes: true });
+  })();
+
+  // --- Debug tab: live serial monitor + maintenance tools ---
+  (function initDebugTab() {
+    const serialPortSel = document.getElementById("debug-serial-port");
+    const serialStartBtn = document.getElementById("debug-serial-start");
+    const serialStopBtn = document.getElementById("debug-serial-stop");
+    const serialStatusEl = document.getElementById("debug-serial-status");
+    const serialLogEl = document.getElementById("debug-serial-log");
+    const toolPortsBtn = document.getElementById("debug-tool-ports");
+    const toolEsptoolBtn = document.getElementById("debug-tool-esptool");
+    const toolHealthBtn = document.getElementById("debug-tool-health");
+    const toolsOutputEl = document.getElementById("debug-tools-output");
+    const panelDebug = document.getElementById("panel-debug");
+
+    let serialPollTimer = null;
+
+    function loadDebugPorts() {
+      if (!serialPortSel) return;
+      fetch("/api/flash/ports")
+        .then((r) => r.json())
+        .then((data) => {
+          const ports = data.ports || [];
+          const portValue = (p) => (typeof p === "string" ? p : (p && p.port)) || "";
+          const portLabel = (p) => {
+            if (typeof p === "string") return p;
+            if (!p) return "";
+            return p.description || p.port || "";
+          };
+          serialPortSel.innerHTML = '<option value="">— Select port —</option>' + ports.map((p) => '<option value="' + escapeHtml(portValue(p)) + '">' + escapeHtml(portLabel(p)) + "</option>").join("");
+        })
+        .catch(() => { serialPortSel.innerHTML = '<option value="">— Select port —</option>'; });
+    }
+
+    function pollSerialBuffer() {
+      if (!serialLogEl) return;
+      fetch("/api/debug/serial")
+        .then((r) => r.json())
+        .then((data) => {
+          const lines = data.lines || [];
+          serialLogEl.textContent = lines.length ? lines.join("\n") : "(no output yet)";
+          serialLogEl.scrollTop = serialLogEl.scrollHeight;
+          if (data.active && serialPollTimer === null) {
+            serialPollTimer = setInterval(pollSerialBuffer, 1500);
+          } else if (!data.active && serialPollTimer !== null) {
+            clearInterval(serialPollTimer);
+            serialPollTimer = null;
+          }
+        })
+        .catch(() => {});
+    }
+
+    serialStartBtn?.addEventListener("click", () => {
+      const port = serialPortSel?.value?.trim();
+      if (!port) {
+        if (serialStatusEl) serialStatusEl.textContent = "Select a port first.";
+        return;
+      }
+      if (serialStatusEl) serialStatusEl.textContent = "Starting…";
+      fetch("/api/debug/serial/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ port: port }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            if (serialStatusEl) serialStatusEl.textContent = data.message || "Listening.";
+            serialPollTimer = setInterval(pollSerialBuffer, 1500);
+            pollSerialBuffer();
+          } else {
+            if (serialStatusEl) serialStatusEl.textContent = data.error || "Failed.";
+          }
+        })
+        .catch((err) => { if (serialStatusEl) serialStatusEl.textContent = "Error: " + err.message; });
+    });
+
+    serialStopBtn?.addEventListener("click", () => {
+      fetch("/api/debug/serial/stop", { method: "POST" })
+        .then(() => {
+          if (serialPollTimer) { clearInterval(serialPollTimer); serialPollTimer = null; }
+          if (serialStatusEl) serialStatusEl.textContent = "Stopped.";
+          if (serialLogEl) serialLogEl.textContent = "";
+        })
+        .catch(() => {});
+    });
+
+    function setToolsOutput(text) {
+      if (toolsOutputEl) toolsOutputEl.textContent = text || "";
+    }
+
+    toolPortsBtn?.addEventListener("click", () => {
+      setToolsOutput("Loading…");
+      fetch("/api/flash/ports")
+        .then((r) => r.json())
+        .then((data) => {
+          const ports = data.ports || [];
+          setToolsOutput(ports.length ? JSON.stringify(ports, null, 2) : "No ports found.");
+        })
+        .catch((err) => setToolsOutput("Error: " + err.message));
+    });
+
+    toolEsptoolBtn?.addEventListener("click", () => {
+      setToolsOutput("Checking…");
+      fetch("/api/debug/tools/esptool-version")
+        .then((r) => r.json())
+        .then((data) => setToolsOutput(data.message || (data.ok ? "OK" : "Not found")))
+        .catch((err) => setToolsOutput("Error: " + err.message));
+    });
+
+    toolHealthBtn?.addEventListener("click", () => {
+      setToolsOutput("Running health check…");
+      fetch("/api/debug/tools/health")
+        .then((r) => r.json())
+        .then((data) => {
+          let out = "";
+          (data.checks || []).forEach((c) => { out += (c.ok ? "[OK] " : "[FAIL] ") + c.name + ": " + (c.message || "") + "\n"; });
+          if ((data.problems || []).length) {
+            out += "\nProblems: " + data.problems.join("; ") + "\n";
+            if (data.suggestions && data.suggestions.length) out += "Suggestions: " + data.suggestions.join("; ") + "\n";
+          }
+          setToolsOutput(out || "No checks returned.");
+        })
+        .catch((err) => setToolsOutput("Error: " + err.message));
+    });
+
+    const debugPanelObserver = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.attributeName === "hidden" && panelDebug && !panelDebug.hidden) loadDebugPorts();
+      });
+    });
+    if (panelDebug) debugPanelObserver.observe(panelDebug, { attributes: true });
+  })();
 
   // --- Project planning ---
   let currentProjectId = "";
@@ -696,26 +1095,69 @@
       .catch(() => {});
   }
 
+  const BOM_ADD_CATEGORIES = ["component", "board", "module", "tool", "other"];
+
   function renderBom(bom) {
     const tbody = document.getElementById("project-bom-tbody");
     if (!tbody) return;
     const rows = bom || [];
+    const projectId = currentProjectId;
     tbody.innerHTML = rows
       .map(
-        (r) =>
-          "<tr><td>" +
-          escapeHtml(r.name || "—") +
-          "</td><td>" +
-          escapeHtml(r.part_number || "—") +
-          "</td><td>" +
-          (r.quantity ?? "—") +
-          "</td><td>" +
-          (r.qty_on_hand != null ? r.qty_on_hand : "—") +
-          "</td><td>" +
-          (r.shortfall != null && r.shortfall > 0 ? r.shortfall : "—") +
-          "</td></tr>"
+        (r, idx) => {
+          const catOpts = BOM_ADD_CATEGORIES.map((c) => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>").join("");
+          return (
+            "<tr data-bom-index=\"" + idx + "\">" +
+            "<td>" + escapeHtml(r.name || "—") + "</td>" +
+            "<td>" + escapeHtml(r.part_number || "—") + "</td>" +
+            "<td>" + (r.quantity ?? "—") + "</td>" +
+            "<td>" + (r.qty_on_hand != null ? r.qty_on_hand : "—") + "</td>" +
+            "<td>" + (r.shortfall != null && r.shortfall > 0 ? r.shortfall : "—") + "</td>" +
+            "<td class=\"bom-actions\">" +
+            "<button type=\"button\" class=\"bom-remove-btn\" data-index=\"" + idx + "\">Remove from BOM</button> " +
+            "<select class=\"bom-add-category\" data-index=\"" + idx + "\"><option value=\"\">Category</option>" + catOpts + "</select> " +
+            "<button type=\"button\" class=\"bom-add-to-inv-btn\" data-index=\"" + idx + "\">Add to inventory</button>" +
+            "</td></tr>"
+          );
+        }
       )
       .join("");
+    tbody.querySelectorAll(".bom-remove-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.getAttribute("data-index"), 10);
+        if (!projectId) return;
+        fetch("/api/projects/" + encodeURIComponent(projectId) + "/bom/items/" + index, { method: "DELETE" })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.error) throw new Error(data.error);
+            currentBom = data.parts_bom || [];
+            renderBom(currentBom);
+          })
+          .catch((err) => alert(err.message));
+      });
+    });
+    tbody.querySelectorAll(".bom-add-to-inv-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const index = parseInt(btn.getAttribute("data-index"), 10);
+        const row = btn.closest("tr");
+        const select = row ? row.querySelector(".bom-add-category") : null;
+        const category = (select && select.value || "component").trim();
+        if (!projectId) return;
+        fetch("/api/inventory/from-bom", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_id: projectId, bom_index: index, category }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.error) throw new Error(data.error);
+            alert(data.message || "Added to inventory. Run scripts/build_db.py to refresh the database.");
+          })
+          .catch((err) => alert(err.message));
+      });
+    });
   }
 
   function renderProjectMessages(msgs) {
@@ -921,6 +1363,109 @@
     }
   });
 
+  (function setupHelpChat() {
+    const messagesEl = document.getElementById("setup-help-messages");
+    const inputEl = document.getElementById("setup-help-message");
+    const btnSend = document.getElementById("btn-setup-help-send");
+    const problemsBanner = document.getElementById("setup-help-problems-banner");
+    const problemsText = document.getElementById("setup-help-problems-text");
+    const btnAskFixes = document.getElementById("setup-help-ask-fixes");
+    const panelSetupHelp = document.getElementById("panel-setup-help");
+    if (!messagesEl || !inputEl || !btnSend) return;
+    let setupHelpHistory = [];
+
+    function renderSetupHelpMessages(msgs) {
+      const list = msgs || [];
+      messagesEl.innerHTML = list
+        .map((m) => '<div class="project-msg project-msg-' + escapeHtml(m.role || "user") + '">' + escapeHtml(m.content || "").slice(0, 4000) + "</div>")
+        .join("");
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function updateProblemsBanner(problems, suggestions) {
+      if (!problemsBanner || !problemsText) return;
+      if (!problems || !problems.length) {
+        problemsBanner.hidden = true;
+        return;
+      }
+      problemsText.textContent = problems.join(". ");
+      if (suggestions && suggestions.length) problemsText.textContent += " Ask the AI for step-by-step fixes.";
+      problemsBanner.hidden = false;
+    }
+
+    function fetchDebugContextAndShowProblems() {
+      fetch("/api/debug/context")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.health_problems && data.health_problems.length) {
+            updateProblemsBanner(data.health_problems, data.health_suggestions);
+          } else {
+            if (problemsBanner) problemsBanner.hidden = true;
+          }
+        })
+        .catch(() => {});
+    }
+
+    function sendSetupHelp() {
+      const msg = (inputEl.value || "").trim();
+      if (!msg) return;
+      inputEl.value = "";
+      setupHelpHistory.push({ role: "user", content: msg });
+      renderSetupHelpMessages(setupHelpHistory);
+      setupHelpHistory.push({ role: "assistant", content: "…" });
+      renderSetupHelpMessages(setupHelpHistory);
+
+      fetch("/api/setup/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg, history: setupHelpHistory.slice(0, -1) }),
+      })
+        .then((r) => {
+          if (!r.ok) return r.json().then((j) => { throw new Error(j.error || r.statusText); });
+          return r.json();
+        })
+        .then((data) => {
+          setupHelpHistory[setupHelpHistory.length - 1].content = data.reply || "(No reply)";
+          renderSetupHelpMessages(setupHelpHistory);
+          if (data.problems && data.problems.length) {
+            updateProblemsBanner(data.problems, data.suggestions);
+          }
+        })
+        .catch((err) => {
+          setupHelpHistory[setupHelpHistory.length - 1].content = "Error: " + err.message;
+          renderSetupHelpMessages(setupHelpHistory);
+        });
+    }
+
+    btnSend.addEventListener("click", sendSetupHelp);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendSetupHelp();
+      }
+    });
+
+    btnAskFixes?.addEventListener("click", () => {
+      fetch("/api/debug/context")
+        .then((r) => r.json())
+        .then((data) => {
+          const problems = data.health_problems || [];
+          if (problems.length && inputEl) {
+            inputEl.value = "I see these issues: " + problems.join("; ") + ". What should I do?";
+            inputEl.focus();
+          }
+        })
+        .catch(() => {});
+    });
+
+    const setupHelpPanelObserver = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.attributeName === "hidden" && panelSetupHelp && !panelSetupHelp.hidden) fetchDebugContextAndShowProblems();
+      });
+    });
+    if (panelSetupHelp) setupHelpPanelObserver.observe(panelSetupHelp, { attributes: true });
+  })();
+
   document.getElementById("btn-project-check-inv")?.addEventListener("click", () => {
     if (!currentProjectId) {
       const st = document.getElementById("project-save-status");
@@ -1003,4 +1548,306 @@
   loadFlashDevices();
   loadFlashArtifacts();
   loadProjectsList();
+
+  document.getElementById("inventory-btn-apply")?.addEventListener("click", () => fetchItems(buildInventoryQueryParams()));
+  document.querySelectorAll("#inventory-table .sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const col = (th.getAttribute("data-sort") || "category").toLowerCase();
+      if (inventorySortColumn === col) inventorySortOrder = inventorySortOrder === "asc" ? "desc" : "asc";
+      else { inventorySortColumn = col; inventorySortOrder = "asc"; }
+      fetchItems(buildInventoryQueryParams());
+    });
+  });
+
+  (function initAddDeviceWizard() {
+    const vendorSelect = document.getElementById("device-wizard-vendor");
+    const searchInput = document.getElementById("device-wizard-search");
+    const listEl = document.getElementById("device-wizard-list");
+    const formWrap = document.getElementById("device-wizard-form-wrap");
+    const formId = document.getElementById("device-form-id");
+    const formName = document.getElementById("device-form-name");
+    const formMcu = document.getElementById("device-form-mcu");
+    const formDatasheet = document.getElementById("device-form-datasheet");
+    const formSchematic = document.getElementById("device-form-schematic");
+    const formReposContainer = document.getElementById("device-form-firmware-repos");
+    const btnAddRepo = document.getElementById("device-form-add-repo");
+    const btnSubmit = document.getElementById("device-form-submit");
+    const btnCancel = document.getElementById("device-form-cancel");
+    const resultEl = document.getElementById("device-wizard-result");
+    const panelAddDevice = document.getElementById("panel-add-device");
+    const checkAddToInventory = document.getElementById("device-form-add-to-inventory");
+    const inventoryCategoryWrap = document.getElementById("device-form-inventory-category-wrap");
+    const inventoryCategorySelect = document.getElementById("device-form-inventory-category");
+    const sdkRow = document.getElementById("device-form-sdk-row");
+    const checkInstallSdk = document.getElementById("device-form-install-sdk");
+    const sdkHint = document.getElementById("device-form-sdk-hint");
+    const showImagesCheckbox = document.getElementById("device-wizard-show-images");
+    const previewEl = document.getElementById("device-wizard-preview");
+    const previewImg = document.getElementById("device-wizard-preview-img");
+    const previewNameEl = document.getElementById("device-wizard-preview-name");
+
+    const FLASHER_IMG_BASE = "https://flasher.meshtastic.org/img/devices";
+
+    if (!listEl || !formWrap) return;
+
+    checkAddToInventory?.addEventListener("change", () => {
+      if (inventoryCategoryWrap) inventoryCategoryWrap.hidden = !checkAddToInventory.checked;
+    });
+
+    showImagesCheckbox?.addEventListener("change", () => {
+      if (!previewEl) return;
+      if (showImagesCheckbox.checked) {
+        previewEl.hidden = false;
+        previewEl.setAttribute("aria-hidden", "false");
+        updatePreview(selectedDevice);
+      } else {
+        previewEl.hidden = true;
+        previewEl.setAttribute("aria-hidden", "true");
+        selectedDevice = null;
+        updatePreview(null);
+      }
+    });
+
+    let catalogData = { vendors: [], devices: [] };
+    let selectedVendor = "";
+    let selectedDevice = null;
+    let flasherImageBase = FLASHER_IMG_BASE;
+
+    function updatePreview(device) {
+      if (!previewEl || !previewImg || !previewNameEl) return;
+      if (showImagesCheckbox && !showImagesCheckbox.checked) return;
+      if (device && device.flasher_image) {
+        previewImg.src = (flasherImageBase || FLASHER_IMG_BASE).replace(/\/$/, "") + "/" + device.flasher_image;
+        previewImg.alt = device.name || "";
+        previewNameEl.textContent = device.name || "";
+        previewImg.hidden = false;
+      } else {
+        previewImg.removeAttribute("src");
+        previewImg.alt = "";
+        previewNameEl.textContent = "Select a device";
+        previewImg.hidden = true;
+      }
+    }
+
+    function buildCatalogQuery() {
+      const params = new URLSearchParams();
+      const v = (vendorSelect?.value || "").trim();
+      const q = (searchInput?.value || "").trim();
+      if (v) params.set("vendor", v);
+      if (q) params.set("q", q);
+      return params.toString();
+    }
+
+    function renderDeviceList(devices, vendors) {
+      const byVendor = {};
+      vendors.forEach((vr) => { byVendor[vr.id] = vr.name; });
+      devices.forEach((d) => {
+        const v = d.vendor || "other";
+        if (!byVendor[v]) byVendor[v] = v;
+        if (!byVendor[v + "_list"]) byVendor[v + "_list"] = [];
+        byVendor[v + "_list"].push(d);
+      });
+      const vendorOrder = vendors.length ? vendors.map((v) => v.id) : Object.keys(byVendor).filter((k) => !k.endsWith("_list"));
+      let html = "";
+      vendorOrder.forEach((vid) => {
+        const list = byVendor[vid + "_list"] || devices.filter((d) => (d.vendor || "") === vid);
+        const label = byVendor[vid] || vid;
+        if (!list.length) return;
+        html += '<div class="add-device-vendor-group">';
+        html += '<button type="button" class="add-device-vendor-toggle" aria-expanded="true" data-vendor="' + escapeHtml(vid) + '">' + escapeHtml(label) + ' <span class="add-device-vendor-count">' + list.length + '</span></button>';
+        html += '<div class="add-device-vendor-devices">';
+        list.forEach((d) => {
+          const inLab = d.already_in_lab;
+          const flasherImg = d.flasher_image ? escapeHtml(d.flasher_image) : "";
+          html += '<div class="add-device-row" data-id="' + escapeHtml(d.id) + '" data-name="' + escapeHtml(d.name || d.id) + '" data-mcu="' + escapeHtml(d.mcu || "") + '" data-vendor="' + escapeHtml(byVendor[d.vendor] || d.vendor || "") + '" data-vendor-id="' + escapeHtml(d.vendor || "") + '"' + (flasherImg ? ' data-flasher-image="' + flasherImg + '"' : "") + '>';
+          html += '<span class="add-device-row-name">' + escapeHtml(d.name || d.id) + '</span>';
+          html += ' <span class="add-device-row-mcu">' + escapeHtml(d.mcu || "") + '</span>';
+          if (inLab) html += ' <span class="add-device-badge">Already in lab</span>';
+          else html += ' <button type="button" class="add-device-row-add btn-refresh">Add</button>';
+          html += '</div>';
+        });
+        html += "</div></div>";
+      });
+      listEl.innerHTML = html || "<p class=\"add-device-empty\">No devices match. Try another vendor or search.</p>";
+
+      listEl.querySelectorAll(".add-device-vendor-toggle").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const expanded = btn.getAttribute("aria-expanded") !== "false";
+          btn.setAttribute("aria-expanded", expanded ? "false" : "true");
+          btn.nextElementSibling.classList.toggle("add-device-vendor-collapsed", expanded);
+        });
+      });
+      listEl.querySelectorAll(".add-device-row-add").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest(".add-device-row");
+          if (!row) return;
+          const id = row.getAttribute("data-id");
+          const name = row.getAttribute("data-name");
+          const mcu = row.getAttribute("data-mcu") || "";
+          const vendor = row.getAttribute("data-vendor") || "";
+          const vendorId = row.getAttribute("data-vendor-id") || "";
+          const flasherImage = row.getAttribute("data-flasher-image") || "";
+          if (formId) formId.value = id || "";
+          if (formName) formName.value = name || "";
+          if (formMcu) formMcu.value = mcu || "";
+          if (formDatasheet) formDatasheet.value = "";
+          if (formSchematic) formSchematic.value = "";
+          if (formReposContainer) {
+            formReposContainer.innerHTML = '<input type="url" class="device-form-repo" placeholder="https://github.com/…" autocomplete="off">';
+          }
+          if (checkAddToInventory) checkAddToInventory.checked = false;
+          if (inventoryCategoryWrap) inventoryCategoryWrap.hidden = true;
+          if (inventoryCategorySelect) {
+            inventoryCategorySelect.value = (vendorId === "raspberry_pi" || vendorId === "pine64") ? "sbc" : "controller";
+          }
+          const catalogDevice = (catalogData.devices || []).find((d) => (d.id || "") === (id || ""));
+          const hasSdk = catalogDevice && catalogDevice.sdk && catalogDevice.sdk.available;
+          if (sdkRow) sdkRow.hidden = !hasSdk;
+          if (checkInstallSdk) checkInstallSdk.checked = hasSdk && (catalogDevice.sdk.default_install !== false);
+          if (sdkHint && hasSdk && catalogDevice.sdk.platform_id) {
+            sdkHint.textContent = "PlatformIO platform \"" + (catalogDevice.sdk.platform_id || "") + "\" will be installed so builds work for this device.";
+          }
+          if (resultEl) resultEl.textContent = "";
+          selectedVendor = vendor || "";
+          selectedDevice = flasherImage ? { flasher_image: flasherImage, name: name || "" } : null;
+          if (showImagesCheckbox && showImagesCheckbox.checked && previewEl) {
+            previewEl.hidden = false;
+            previewEl.setAttribute("aria-hidden", "false");
+            updatePreview(selectedDevice);
+          }
+          formWrap.hidden = false;
+        });
+      });
+      listEl.querySelectorAll(".add-device-row").forEach((row) => {
+        if (row.querySelector(".add-device-row-add")) return;
+        row.addEventListener("click", () => {
+          const addBtn = row.querySelector(".add-device-row-add");
+          if (addBtn) addBtn.click();
+        });
+      });
+      if (showImagesCheckbox && previewEl) {
+        listEl.querySelectorAll(".add-device-row[data-flasher-image]").forEach((row) => {
+          row.addEventListener("mouseenter", () => {
+            if (!showImagesCheckbox.checked) return;
+            const img = row.getAttribute("data-flasher-image");
+            const name = row.getAttribute("data-name") || "";
+            if (img) updatePreview({ flasher_image: img, name: name });
+          });
+          row.addEventListener("mouseleave", () => {
+            if (!showImagesCheckbox.checked) return;
+            updatePreview(selectedDevice);
+          });
+        });
+        if (showImagesCheckbox.checked) {
+          previewEl.hidden = false;
+          previewEl.setAttribute("aria-hidden", "false");
+          updatePreview(selectedDevice);
+        }
+      }
+    }
+
+    function loadDeviceCatalog() {
+      const query = buildCatalogQuery();
+      fetch("/api/devices/catalog" + (query ? "?" + query : ""))
+        .then((r) => r.json())
+        .then((data) => {
+          catalogData = data;
+          flasherImageBase = data.flasher_image_base || FLASHER_IMG_BASE;
+          const vendors = data.vendors || [];
+          const devices = data.devices || [];
+          if (vendorSelect) {
+            vendorSelect.innerHTML = '<option value="">All vendors</option>' + vendors.map((v) => '<option value="' + escapeHtml(v.id) + '">' + escapeHtml(v.name) + '</option>').join("");
+          }
+          renderDeviceList(devices, vendors);
+        })
+        .catch((err) => {
+          listEl.innerHTML = "<p class=\"add-device-empty\">Failed to load catalog: " + escapeHtml(err.message) + "</p>";
+        });
+    }
+
+    function onAddDeviceTabVisible() {
+      if (catalogData.vendors.length === 0) loadDeviceCatalog();
+    }
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        if (m.attributeName === "hidden") {
+          if (panelAddDevice && !panelAddDevice.hidden) onAddDeviceTabVisible();
+        }
+      });
+    });
+    if (panelAddDevice) observer.observe(panelAddDevice, { attributes: true });
+
+    vendorSelect?.addEventListener("change", loadDeviceCatalog);
+    searchInput?.addEventListener("input", () => { if (searchInput.value.trim().length >= 2 || searchInput.value.trim() === "") loadDeviceCatalog(); });
+    searchInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") loadDeviceCatalog(); });
+
+    btnAddRepo?.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.type = "url";
+      input.className = "device-form-repo";
+      input.placeholder = "https://github.com/…";
+      input.setAttribute("autocomplete", "off");
+      formReposContainer?.appendChild(input);
+    });
+
+    btnCancel?.addEventListener("click", () => {
+      formWrap.hidden = true;
+    });
+
+    btnSubmit?.addEventListener("click", () => {
+      const device_id = (formId?.value || "").trim();
+      const name = (formName?.value || "").trim();
+      const mcu = (formMcu?.value || "").trim();
+      const vendor = selectedVendor.trim();
+      if (!device_id && !name) {
+        if (resultEl) { resultEl.textContent = "Enter device ID or name."; resultEl.className = "flash-status flash-error"; }
+        return;
+      }
+      const repoInputs = formReposContainer?.querySelectorAll(".device-form-repo") || [];
+      const firmware_repos = [];
+      repoInputs.forEach((inp) => { const v = (inp.value || "").trim(); if (v) firmware_repos.push(v); });
+      const doc_links = {
+        datasheet: (formDatasheet?.value || "").trim() || undefined,
+        schematic: (formSchematic?.value || "").trim() || undefined,
+        firmware_repos: firmware_repos.length ? firmware_repos : undefined,
+      };
+      if (resultEl) { resultEl.textContent = "Creating…"; resultEl.className = "flash-status"; }
+      const add_to_inventory = !!(checkAddToInventory?.checked);
+      const inventory_category = (inventoryCategorySelect?.value || "controller").trim();
+      const install_sdk = sdkRow && !sdkRow.hidden ? !!(checkInstallSdk?.checked) : false;
+      fetch("/api/devices/scaffold", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: device_id || name,
+          name: name || device_id,
+          vendor,
+          mcu,
+          doc_links,
+          add_to_inventory,
+          inventory_category: add_to_inventory ? inventory_category : undefined,
+          install_sdk,
+        }),
+      })
+        .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+          if (ok && data.success) {
+            let msg = "Created: " + (data.paths?.device_dir || "") + ".";
+            if (data.sdk_message) msg += " SDK: " + data.sdk_message + ".";
+            if (data.paths?.sdk_install_error) msg += " (SDK install failed: " + data.paths.sdk_install_error + ")";
+            if (data.paths?.inventory_file) msg += " Added to " + data.paths.inventory_file + ". Run build_db to update the DB.";
+            msg += " Add more or refresh the list.";
+            if (resultEl) { resultEl.textContent = msg; resultEl.className = "flash-status flash-ok"; }
+            formWrap.hidden = true;
+            loadDeviceCatalog();
+          } else {
+            if (resultEl) { resultEl.textContent = data.error || "Failed"; resultEl.className = "flash-status flash-error"; }
+          }
+        })
+        .catch((err) => {
+          if (resultEl) { resultEl.textContent = "Error: " + err.message; resultEl.className = "flash-status flash-error"; }
+        });
+    });
+  })();
 })();

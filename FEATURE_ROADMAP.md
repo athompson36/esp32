@@ -1,7 +1,7 @@
-# Full Feature Roadmap — ESP32 Embedded Firmware Lab
+# Full Feature Roadmap — Cyber-Lab
 
-**Repository:** Prepared for `https://github.com/athompson36/esp32`  
-**Context:** Unified ESP32 development environment (local-first, containerized, deterministic)  
+**Repository:** Prepared for `https://github.com/athompson36/cyber-lab`  
+**Context:** Cyber-Lab — unified ESP32 development environment (local-first, containerized, deterministic)  
 **Last updated:** 2025-02-17
 
 ---
@@ -18,7 +18,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| L1 | Adopt CONTEXT.md device layout under `/devices` | 🔴 Not started | Current work lives in `t-beam_1w/`; migrate to `devices/t_beam_1w/` per contract |
+| L1 | Adopt CONTEXT.md device layout under `/devices` | 🟢 Done | Root device folders migrated to `devices/` with correct naming; T-Beam 1W firmware under `devices/t_beam_1w/firmware/{meshcore,meshtastic}/repo` |
 | L2 | Per-device contract: `firmware/`, `configs/`, `pinmaps/`, `notes/` | 🔴 Not started | Each device folder must have these four subdirs |
 | L3 | Firmware layout: `meshtastic/`, `meshcore/`, `expresslrs/`, `custom/` under device | 🟡 Partial | MeshCore present; Meshtastic port in separate project; unify under one device |
 | L4 | Overlay-only customization; no direct upstream edits | 🟢 Followed | MeshCore/Meshtastic use overlays/patches; preserve |
@@ -26,7 +26,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 **Actions:**
 
 - Create `devices/t_beam_1w/` (or `tbeam_1w`) with `firmware/`, `configs/`, `pinmaps/`, `notes/`.
-- Move or symlink `t-beam 1w meshcore` → `devices/t_beam_1w/firmware/meshcore/repo` and apply overlays in `firmware/meshcore/overlays/`.
+- MeshCore and Meshtastic repos now live under `devices/t_beam_1w/firmware/meshcore/repo` and `firmware/meshtastic/repo`; apply overlays in `firmware/*/overlays/`.
 - Move or reference Meshtastic port → `devices/t_beam_1w/firmware/meshtastic/` (repo + overlays).
 - Populate `pinmaps/` from `TBEAM_1W_PINMAP.md` and variant docs; `notes/` from T-BEAM-1W-FIXES, MESHTASTIC-IMPROVEMENTS, BATTERY-FIX.
 
@@ -71,6 +71,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
 | L15 | Webapp for iOS / iPadOS / Android | 🔴 Planned | PWA or native wrapper: inventory search, AI query, project planning, Docker/device status; responsive layout and installable on mobile |
+| L16 | **iOS / WatchOS native app** (voice + text AI Agent chat) | 🔴 Future | Native iOS and WatchOS app with voice and text AI Agent chat; same lab context (devices, firmware, config, flash) as web app. **Prerequisite:** Web app fully tested and stable. |
 
 ---
 
@@ -170,7 +171,7 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 ---
 
-## 6. Repo Readiness for GitHub (athompson36/esp32)
+## 6. Repo Readiness for GitHub (athompson36/cyber-lab)
 
 ### 6.1 Structure & Hygiene
 
@@ -186,7 +187,7 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 - Add root README.md (lab overview, prerequisites, “build in container, flash from host”, link to CONTEXT.md and FEATURE_ROADMAP.md).
 - Add .gitignore; optionally keep `artifacts/` in git or document as optional.
-- Decide whether `athompson36/esp32` is the canonical lab repo; if so, document in README.
+- Decide whether `athompson36/cyber-lab` is the canonical lab repo; if so, document in README.
 
 ### 6.2 Device Layout and Docs
 
@@ -245,12 +246,55 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 | Area | Key doc | Key location |
 |------|---------|--------------|
 | Lab rules | CONTEXT.md | Repo root |
-| T-Beam 1W MeshCore | T-BEAM-1W-FIXES.md, MESHTASTIC-IMPROVEMENTS.md | t-beam 1w meshcore/ |
-| T-Beam 1W Meshtastic port | DEVELOPMENT_PLAN.md, PROJECT_CONTEXT.md, TBEAM_1W_PINMAP.md | meshtastic-tbeam-1w-firmware/ |
-| Dependencies | DEPENDENCY_CHECKLIST.md | meshtastic-tbeam-1w-firmware/docs/ |
-| MeshCore roadmap | README “Road-Map / To-Do” | t-beam 1w meshcore/README.md |
+| T-Beam 1W MeshCore | T-BEAM-1W-FIXES.md, MESHTASTIC-IMPROVEMENTS.md | devices/t_beam_1w/firmware/meshcore/repo/ |
+| T-Beam 1W Meshtastic port | DEVELOPMENT_PLAN.md, PROJECT_CONTEXT.md, TBEAM_1W_PINMAP.md | devices/t_beam_1w/firmware/meshtastic/repo/ |
+| Dependencies | DEPENDENCY_CHECKLIST.md | devices/t_beam_1w/firmware/meshtastic/repo/docs/ |
+| MeshCore roadmap | README “Road-Map / To-Do” | devices/t_beam_1w/firmware/meshcore/repo/README.md |
 
 ---
 
-**Prepared for:** `https://github.com/athompson36/esp32`  
+## 16. Cyberdeck Manager (Unified Platform)
+
+**Spec:** [docs/CYBERDECK_MANAGER_SPEC.md](docs/CYBERDECK_MANAGER_SPEC.md)  
+**Scaffold:** [docs/cyberdeck_scaffold.md](docs/cyberdeck_scaffold.md)  
+**Schema:** [scripts/schema/cyberdeck_schema.sql](scripts/schema/cyberdeck_schema.sql)  
+**Device registry seeds:** [registry/devices/](registry/devices/)
+
+The Cyberdeck Manager extends the lab into a **device + firmware + map + flash + hardware lifecycle** platform:
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Device registry (JSON + DB) | 🟡 Scaffold | `registry/devices/*.json`; schema `devices` table |
+| Firmware registry | 🔴 Planned | GitHub metadata, compatibility mapping |
+| Map manager (regions, tiles, SD) | 🔴 Planned | Region scanner, wizard, tile calculator, SD validator |
+| Flash (USB + SD Launcher) | 🟡 Partial | Inventory app flash + auto-detect; add SD Launcher path |
+| Hardware inspector | 🔴 Planned | Serial/BLE/USB detection, fleet snapshots |
+| RF/CAN presets | 🟡 Scaffold | `registry/rf_presets.json`; CAN registry |
+| Multi-user & DB | 🟡 Schema | users, flash_history, map_builds, hardware_snapshots |
+| CLI (Typer) + Web (FastAPI) | 🔴 Planned | See scaffold; optional `cyberdeck_cli/`, extend or add web |
+| Docker | 🟡 Reference | `docker/Dockerfile.cyberdeck`; pyproject.cyberdeck.toml |
+
+---
+
+## 17. PCB & 3D Design Stack (AI, Export, Maker Upload)
+
+**Spec:** [docs/PCB_3D_DESIGN_STACK_SPEC.md](docs/PCB_3D_DESIGN_STACK_SPEC.md)
+
+Full AI-aware PCB and 3D-printing design stack: dimension-aware part mock-ups, AI-optimized enclosures, simple 3D preview, export in common formats, optional upload to maker sites with account syncing.
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Part dimensions in catalog | 🔴 Planned | specs: length_mm, width_mm, height_mm, footprint, mounting; optional model_3d_url (see spec §2.1). |
+| Design placements & enclosure_params | 🔴 Planned | Extend project DESIGN with placements (x,y,z, ref_des), enclosure_params (box, cutouts); AI suggests from BOM + dimensions + use case. |
+| AI context (dimensions + use case) | 🔴 Planned | Inject part dimensions into project planning prompt; AI outputs structured placements and enclosure; extend DESIGN block. |
+| Simple 3D viewer (parts + enclosure) | 🔴 Planned | Primitive-based (boxes from dimensions) in project planning UI; Three.js or equivalent; phase 2. |
+| Export: enclosure STL/STEP/3MF/OBJ | 🔴 Planned | Parametric → script (OpenSCAD/FreeCAD) → STL/STEP; API + UI “Export as”. |
+| Export: PCB Gerber/ODB++/netlist | 🔴 Planned | Via KiCad or script from netlist + placements; API + UI. |
+| Maker site upload + account sync | 🔴 Planned | JLCPCB, PCBWay, OSHPark (PCB); Printables, Thingiverse, Thangs (3D); store tokens, project/revision links (spec §6). |
+
+Phases: (1) Data & AI, (2) 3D preview, (3) Export formats, (4) Maker upload. See spec for API and artifact paths.
+
+---
+
+**Prepared for:** `https://github.com/athompson36/cyber-lab`  
 *(Note: If the repo is private or not yet created, create it and push this lab; use this roadmap as the initial backlog.)*

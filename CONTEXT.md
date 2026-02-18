@@ -1,6 +1,6 @@
 # CONTEXT.md
 
-## Embedded Firmware Lab --- Unified ESP32 Development Environment
+## Cyber-Lab — Unified ESP32 Development Environment
 
 **Host System:** Apple Mac Studio (Apple Silicon)\
 **Operating Model:** Local-first, containerized, deterministic builds\
@@ -53,7 +53,7 @@ Host builds are discouraged unless absolutely required.
 
 # 🧱 Top-Level Architecture
 
-    /esp32
+    /cyber-lab
     │
     ├── CONTEXT.md
     │
@@ -82,6 +82,11 @@ Host builds are discouraged unless absolutely required.
 5.  Artifacts are never deleted
 
 Storage is cheap. Reproducibility is priceless.
+
+## Agent rules (errors and dependencies)
+
+- **If errors are ever encountered:** Diagnose, fix, and verify the issue before moving on. Do not proceed to the next task until the current failure is resolved and tested.
+- **If errors are encountered when installing and configuring dependencies:** Try to resolve the issue before changing tactics. Do not stray from the plan without specific verification to do so in every case.
 
 ------------------------------------------------------------------------
 

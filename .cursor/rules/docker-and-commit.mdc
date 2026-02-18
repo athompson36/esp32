@@ -1,0 +1,36 @@
+---
+description: Update Docker files when adding features or fixing Docker issues; then prompt user to commit and push to GitHub
+alwaysApply: false
+---
+
+# Docker updates and commit reminder
+
+When you **add a feature** or **resolve a Docker problem**, do the following.
+
+## 1. Update Docker files as needed
+
+- **New features** that touch the app or MCP server: ensure **Dockerfiles** and **docker-compose.yml** (in `inventory/app/`, `mcp-server/`) still install the right dependencies, copy the right paths, and expose the right ports/env. Update **requirements.txt** or **package.json** if the feature adds dependencies.
+- **Docker fixes** (e.g. build failures, missing deps, wrong user/permissions, socket mount): update the relevant **Dockerfile**, **docker-compose.yml**, or **.dockerignore** so the fix is documented and repeatable.
+- If you added new docs or context files that the container needs to read (e.g. under `docs/`), confirm the image **mounts or copies** the repo (or the needed paths) so the app/MCP can see them.
+
+After editing Docker-related files, run a rebuild so the user can test:
+
+```bash
+./scripts/rebuild-containers.sh
+```
+
+(Or the appropriate `docker compose ... build` for the image you changed.)
+
+## 2. Prompt the user to commit and push
+
+After you have:
+
+- updated any Docker files (and optionally rebuilt), and  
+- finished the feature or Docker fix,
+
+**prompt the user** to commit and push to GitHub, for example:
+
+- “When you’re ready, commit these changes and push to GitHub.”
+- “Docker files are updated. Consider committing and pushing to GitHub so the fix is saved and shared.”
+
+Keep the prompt short and friendly; the user decides when to actually commit and push.

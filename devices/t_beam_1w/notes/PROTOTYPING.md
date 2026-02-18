@@ -121,4 +121,4 @@ Candidates that are **not** listed in the “used” table above and are general
 - [HARDWARE_LAYOUT.md](../pinmaps/HARDWARE_LAYOUT.md) — pinout and power
 - [PERIPHERALS.md](../pinmaps/PERIPHERALS.md) — peripheral list and constraints
 - [shared/t_beam_1w/RF_PA_FAN_PMU.md](../../../shared/t_beam_1w/RF_PA_FAN_PMU.md) — canonical RF/PA/fan/PMU rules
-- If MeshCore repo is cloned: `t-beam_1w/t-beam 1w meshcore/T-BEAM-1W-FIXES.md` — known hardware/firmware fixes
+- MeshCore repo: `firmware/meshcore/repo/T-BEAM-1W-FIXES.md` — known hardware/firmware fixes

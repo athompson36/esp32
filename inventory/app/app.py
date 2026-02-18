@@ -51,6 +51,31 @@ from project_ops import (
     load_proposal,
     save_proposal,
 )
+from map_ops import wizard_estimate, wizard_list_regions
+from device_ops import (
+    add_bom_row_to_inventory,
+    device_search,
+    download_device_doc,
+    get_device_structure,
+    load_device_catalog,
+    list_devices_in_lab,
+    scaffold_device,
+)
+from debug_ops import (
+    get_debug_context,
+    run_esptool_version,
+    run_health_checks,
+    serial_get_buffer,
+    serial_is_active,
+    serial_start,
+    serial_stop,
+)
+from config_wizard_ops import (
+    get_config_wizard_context,
+    list_config_presets,
+    load_config_preset,
+    save_config_preset,
+)
 
 PROJECT_PLANNING_SYSTEM = (
     "You are a project planning assistant for electronics/hardware projects. "
@@ -60,7 +85,8 @@ PROJECT_PLANNING_SYSTEM = (
     "Example: BOM: [{\"name\": \"ESP32 DevKit C\", \"part_number\": \"\", \"quantity\": 2}, {\"name\": \"10k resistor\", \"part_number\": \"\", \"quantity\": 10}] "
     "When the project involves a circuit or PCB, also output a DESIGN block for pinouts, wiring, schematic, and enclosure. "
     "Use exactly: DESIGN: then a single JSON object with keys: pin_outs (array of {pin, function, notes}), wiring (array of {from, to, net}), schematic (string: markdown description or block diagram notes for a schematic), enclosure (string: markdown notes for 3D-printed enclosure, dimensions and mounting). "
-    "Example: DESIGN: {\"pin_outs\": [{\"pin\": \"GPIO21\", \"function\": \"I2C SDA\", \"notes\": \"\"}], \"wiring\": [{\"from\": \"ESP32.GPIO21\", \"to\": \"OLED.SDA\", \"net\": \"I2C_SDA\"}], \"schematic\": \"ESP32 I2C to OLED...\", \"enclosure\": \"Box 80x60x30mm, cutouts for USB and display.\"}"
+    "Example: DESIGN: {\"pin_outs\": [{\"pin\": \"GPIO21\", \"function\": \"I2C SDA\", \"notes\": \"\"}], \"wiring\": [{\"from\": \"ESP32.GPIO21\", \"to\": \"OLED.SDA\", \"net\": \"I2C_SDA\"}], \"schematic\": \"ESP32 I2C to OLED...\", \"enclosure\": \"Box 80x60x30mm, cutouts for USB and display.\"} "
+    "You can also help with moving parts: to add an inventory item to this project's BOM, tell the user to open the Inventory tab, click the item, and use 'Add to project' to choose this project. To add a BOM row to their inventory, tell them to use 'Add to inventory' next to that row in the Parts BOM section."
 )
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -142,6 +168,10 @@ def api_settings_paths_post():
         return jsonify({"error": str(e)}), 500
 
 
+# Allowed sort columns for /api/items (whitelist for SQL safety)
+ITEMS_SORT_COLUMNS = {"id", "name", "category", "quantity", "part_number", "location", "manufacturer"}
+
+
 @app.route("/api/items")
 def list_items():
     conn = get_db()
@@ -149,20 +179,30 @@ def list_items():
         return jsonify({"error": "Database not found. Run inventory/scripts/build_db.py first."}), 503
     q = (request.args.get("q") or "").strip()
     category = (request.args.get("category") or "").strip().lower()
+    manufacturer = (request.args.get("manufacturer") or "").strip()
+    sort = (request.args.get("sort") or "category").strip().lower()
+    order = (request.args.get("order") or "asc").strip().lower()
     limit = request.args.get("limit", type=int) or 500
     offset = request.args.get("offset", type=int) or 0
+
+    if sort not in ITEMS_SORT_COLUMNS:
+        sort = "category"
+    order = "DESC" if order == "desc" else "ASC"
 
     sql = "SELECT * FROM items WHERE 1=1"
     params = []
     if category:
         sql += " AND category = ?"
         params.append(category)
+    if manufacturer:
+        sql += " AND manufacturer LIKE ?"
+        params.append(f"%{manufacturer}%")
     if q:
         # Search name, part_number, model, notes, tags (stored as JSON array string)
         sql += " AND (name LIKE ? OR part_number LIKE ? OR model LIKE ? OR notes LIKE ? OR tags LIKE ? OR manufacturer LIKE ?)"
         pattern = f"%{q}%"
         params.extend([pattern] * 6)
-    sql += " ORDER BY category, name LIMIT ? OFFSET ?"
+    sql += f" ORDER BY {sort} {order}, id ASC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     try:
@@ -179,6 +219,9 @@ def list_items():
     if category:
         count_sql += " AND category = ?"
         count_params.append(category)
+    if manufacturer:
+        count_sql += " AND manufacturer LIKE ?"
+        count_params.append(f"%{manufacturer}%")
     if q:
         count_sql += " AND (name LIKE ? OR part_number LIKE ? OR model LIKE ? OR notes LIKE ? OR tags LIKE ? OR manufacturer LIKE ?)"
         pattern = f"%{q}%"
@@ -187,6 +230,19 @@ def list_items():
     conn.close()
 
     return jsonify({"items": items, "total": total})
+
+
+@app.route("/api/items/manufacturers")
+def list_manufacturers():
+    """Return distinct manufacturers for filter dropdown."""
+    conn = get_db()
+    if not conn:
+        return jsonify({"manufacturers": []})
+    try:
+        rows = conn.execute("SELECT DISTINCT manufacturer FROM items WHERE manufacturer IS NOT NULL AND manufacturer != '' ORDER BY manufacturer").fetchall()
+        return jsonify({"manufacturers": [r[0] for r in rows]})
+    finally:
+        conn.close()
 
 
 @app.route("/api/items/<item_id>")
@@ -261,14 +317,14 @@ def _docker_images():
         if out.returncode != 0:
             return []
         all_images = [line.strip() for line in out.stdout.strip().splitlines() if line.strip()]
-        wanted = {"esp32-lab-mcp", "inventory-app", "app-inventory", "platformio-lab"}
+        wanted = {"cyber-lab-mcp", "inventory-app", "app-inventory", "platformio-lab"}
         return [img for img in all_images if img.split(":")[0] in wanted]
     except Exception:
         return []
 
 
 # Lab-related image/name prefixes for container list (only show these)
-_DOCKER_LAB_NAMES = {"app-inventory", "inventory-app", "esp32-lab-mcp", "platformio-lab", "inventory", "mcp", "platformio"}
+_DOCKER_LAB_NAMES = {"app-inventory", "inventory-app", "cyber-lab-mcp", "platformio-lab", "inventory", "mcp", "platformio"}
 
 
 def _docker_containers():
@@ -292,7 +348,7 @@ def _docker_containers():
             cid, names, image, state, status = parts[0], parts[1], parts[2], parts[3], parts[4]
             image_base = image.split(":")[0] if image else ""
             name_lower = (names or "").lower()
-            if image_base not in _DOCKER_LAB_NAMES and not any(n in name_lower for n in ("inventory", "esp32-lab", "platformio")):
+            if image_base not in _DOCKER_LAB_NAMES and not any(n in name_lower for n in ("inventory", "cyber-lab", "platformio")):
                 continue
             result.append({
                 "id": cid,
@@ -407,8 +463,8 @@ def api_docker_tools():
             "name": "MCP server (Cursor)",
             "description": "Project context, roadmap, devices, inventory, firmware index. Stdio transport for Cursor.",
             "type": "docker",
-            "available": "esp32-lab-mcp" in image_names,
-            "command": "docker run --rm -i -v REPO:/workspace -e ESP32_LAB_REPO_ROOT=/workspace esp32-lab-mcp",
+            "available": "cyber-lab-mcp" in image_names,
+            "command": "docker run --rm -i -v REPO:/workspace -e CYBER_LAB_REPO_ROOT=/workspace cyber-lab-mcp",
             "build": "docker compose -f mcp-server/docker-compose.yml build",
         },
         {
@@ -441,6 +497,261 @@ def api_docker_tools():
         "docker_available": ok,
         "tools": tools,
     })
+
+
+@app.route("/api/devices/catalog")
+def api_devices_catalog():
+    """Device wizard catalog: vendors and devices. Optional ?vendor= & ?q= for filter/search."""
+    vendor_filter = (request.args.get("vendor") or "").strip().lower()
+    q = (request.args.get("q") or "").strip().lower()
+    data = load_device_catalog()
+    existing = list_devices_in_lab()
+    vendors = data.get("vendors") or []
+    devices = data.get("devices") or []
+    for d in devices:
+        d["already_in_lab"] = d.get("id", "") in existing
+    if vendor_filter:
+        devices = [d for d in devices if (d.get("vendor") or "").lower() == vendor_filter]
+    if q:
+        devices = [
+            d for d in devices
+            if q in (d.get("id") or "").lower()
+            or q in (d.get("name") or "").lower()
+            or q in (d.get("mcu") or "").lower()
+            or q in (d.get("description") or "").lower()
+        ]
+    flasher_base = data.get("flasher_image_base") or "https://flasher.meshtastic.org/img/devices"
+    return jsonify({"vendors": vendors, "devices": devices, "existing_ids": list(existing), "flasher_image_base": flasher_base})
+
+
+@app.route("/api/devices/scaffold", methods=["POST"])
+def api_devices_scaffold():
+    """Create devices/<id>/ and registry entry from wizard. Body: device_id, name, vendor?, mcu?, doc_links?, add_to_inventory?, inventory_category?, install_sdk?."""
+    from device_ops import get_catalog_device, install_device_sdk
+    body = request.get_json() or {}
+    device_id = (body.get("device_id") or "").strip()
+    name = (body.get("name") or "").strip()
+    vendor = (body.get("vendor") or "").strip()
+    mcu = (body.get("mcu") or "").strip()
+    doc_links = body.get("doc_links") or {}
+    add_to_inventory = bool(body.get("add_to_inventory"))
+    inventory_category = (body.get("inventory_category") or "controller").strip().lower()
+    install_sdk = body.get("install_sdk", True)  # default True when SDK available
+    if not device_id and not name:
+        return jsonify({"error": "device_id or name required"}), 400
+    if not device_id:
+        device_id = name
+    success, message, paths = scaffold_device(
+        device_id, name, vendor=vendor, mcu=mcu, doc_links=doc_links,
+        add_to_inventory=add_to_inventory, inventory_category=inventory_category,
+    )
+    if not success:
+        return jsonify({"success": False, "error": message}), 400
+    sdk_message = None
+    if install_sdk:
+        catalog_entry = get_catalog_device(device_id)
+        if catalog_entry and (catalog_entry.get("sdk") or {}).get("available"):
+            sdk_ok, sdk_message = install_device_sdk(device_id, catalog_entry=catalog_entry)
+            if not sdk_ok and paths:
+                paths["sdk_install_error"] = sdk_message
+    return jsonify({"success": True, "message": message, "paths": paths, "sdk_message": sdk_message})
+
+
+@app.route("/api/devices/<device_id>/sdk")
+def api_device_sdk(device_id):
+    """Return SDK path and metadata for the device so the AI and tools can use the SDK. 404 if no SDK."""
+    from device_ops import get_device_sdk_path
+    info = get_device_sdk_path(device_id)
+    if not info:
+        return jsonify({"error": "No SDK for this device"}), 404
+    return jsonify(info)
+
+
+@app.route("/api/devices/<device_id>/structure")
+def api_device_structure(device_id):
+    """Return folder structure and naming conventions for a device (for agent: where to place docs)."""
+    structure = get_device_structure(device_id)
+    if structure is None:
+        return jsonify({"error": f"Device not found: {device_id}"}), 404
+    return jsonify(structure)
+
+
+@app.route("/api/devices/fetch-doc", methods=["POST"])
+def api_devices_fetch_doc():
+    """Download a document from URL and save to devices/<device_id>/docs/ with correct naming.
+    Body: device_id, url, doc_type (datasheet|schematic|manual|reference|other), optional suggested_filename.
+    Agent uses this after finding a URL (e.g. from device-search or its own search)."""
+    data = request.get_json() or request.form or {}
+    device_id = (data.get("device_id") or "").strip()
+    url = (data.get("url") or "").strip()
+    doc_type = (data.get("doc_type") or "other").strip().lower()
+    suggested_filename = (data.get("suggested_filename") or "").strip() or None
+    if not device_id or not url:
+        return jsonify({"success": False, "error": "device_id and url required"}), 400
+    ok, path_or_err = download_device_doc(device_id, url, doc_type=doc_type, suggested_filename=suggested_filename)
+    if ok:
+        return jsonify({"success": True, "path": path_or_err})
+    return jsonify({"success": False, "error": path_or_err}), 400
+
+
+@app.route("/api/agent/device-search")
+def api_agent_device_search():
+    """Search the web for device content (datasheets, schematics). Query: q=, max_results= (default 10).
+    Agent can use this then POST to /api/devices/fetch-doc with the chosen URL."""
+    q = (request.args.get("q") or "").strip()
+    max_results = min(int(request.args.get("max_results") or 10), 20)
+    if not q:
+        return jsonify({"error": "query q required", "results": []}), 400
+    results, err = device_search(q, max_results=max_results)
+    if err:
+        return jsonify({"results": [], "message": err})
+    return jsonify({"results": results})
+
+
+# --- Device configuration wizard (pre/post flash, internal or Launcher) ---
+
+CONFIG_WIZARD_SYSTEM = (
+    "You are an assistant for the device configuration wizard. "
+    "The user is configuring a device (Meshtastic, MeshCore, or Launcher firmware) either before or after flashing. "
+    "Help with region choice (RF compliance), device name, channel/LoRa settings, and any step-specific questions. "
+    "Be concise; suggest values when relevant (e.g. region for their location, safe TX power). "
+)
+
+@app.route("/api/config-wizard/context")
+def api_config_wizard_context():
+    """Context for device config wizard: devices, firmware targets, RF presets."""
+    try:
+        return jsonify(get_config_wizard_context())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/config-wizard/presets")
+def api_config_wizard_presets():
+    """List saved config presets for device + firmware. Query: device_id, firmware."""
+    device_id = (request.args.get("device_id") or "").strip()
+    firmware = (request.args.get("firmware") or "").strip()
+    if not device_id or not firmware:
+        return jsonify({"presets": [], "error": "device_id and firmware required"})
+    presets = list_config_presets(device_id, firmware)
+    return jsonify({"presets": presets})
+
+
+@app.route("/api/config-wizard/presets", methods=["POST"])
+def api_config_wizard_save_preset():
+    """Save a config preset. Body: device_id, firmware, preset_name, options."""
+    data = request.get_json() or request.form or {}
+    device_id = (data.get("device_id") or "").strip()
+    firmware = (data.get("firmware") or "").strip()
+    preset_name = (data.get("preset_name") or data.get("name") or "preset").strip()
+    options = data.get("options") or {}
+    if not device_id or not firmware:
+        return jsonify({"success": False, "error": "device_id and firmware required"}), 400
+    ok, path_or_err = save_config_preset(device_id, firmware, preset_name, options)
+    if ok:
+        return jsonify({"success": True, "path": path_or_err})
+    return jsonify({"success": False, "error": path_or_err}), 400
+
+
+@app.route("/api/config-wizard/presets/<preset_name>")
+def api_config_wizard_load_preset(preset_name):
+    """Load one preset. Query: device_id, firmware."""
+    device_id = (request.args.get("device_id") or "").strip()
+    firmware = (request.args.get("firmware") or "").strip()
+    if not device_id or not firmware:
+        return jsonify({"error": "device_id and firmware required"}), 400
+    ok, data_or_err = load_config_preset(device_id, firmware, preset_name)
+    if not ok:
+        return jsonify({"error": data_or_err}), 404
+    return jsonify(data_or_err)
+
+
+def _device_context_block_for_ai():
+    """Build a compact device context block (logs + live status) for injection into AI prompts."""
+    try:
+        ctx = get_debug_context()
+        parts = []
+        if ctx.get("serial_active"):
+            parts.append("Live status: serial active on " + (ctx.get("serial_port") or ""))
+        else:
+            parts.append("Live status: serial inactive")
+        parts.extend([
+            "Ports: " + ctx.get("ports_summary", "unknown"),
+            "esptool: " + ("ok" if ctx.get("esptool_ok") else "missing/failed"),
+        ])
+        if ctx.get("serial_tail"):
+            parts.append("Live device log (last 80 lines):\n" + (ctx["serial_tail"][-2500:] or ""))
+        if ctx.get("historical_log"):
+            parts.append("Historical device log:\n" + (ctx["historical_log"][-3000:] or ""))
+        if ctx.get("health_problems"):
+            parts.append("Problems: " + ", ".join(ctx["health_problems"]))
+        return "\n\n".join(parts)
+    except Exception:
+        return ""
+
+
+@app.route("/api/config-wizard/chat", methods=["POST"])
+def api_config_wizard_chat():
+    """Chat for wizard assist: message + optional step/device/firmware/options for context."""
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    step = (data.get("step") or "").strip()
+    device_id = (data.get("device_id") or "").strip()
+    firmware = (data.get("firmware") or "").strip()
+    options = data.get("options") or {}
+    if not message:
+        return jsonify({"error": "message required"}), 400
+    system = CONFIG_WIZARD_SYSTEM
+    if step or device_id or firmware or options:
+        system += "\n\nCurrent wizard state: step=%s, device_id=%s, firmware=%s. Options so far: %s" % (
+            step or "—", device_id or "—", firmware or "—", json.dumps(options)[:500])
+    device_block = _device_context_block_for_ai()
+    if device_block:
+        system += "\n\n--- Device context (connected device logs, historical logs, live status) ---\n" + device_block[:4000]
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": message}]
+    reply = ""
+    if get_openai_api_key():
+        try:
+            client = _openai_client()
+            resp = client.chat.completions.create(
+                model=get_openai_model(),
+                messages=messages,
+                max_tokens=500,
+            )
+            reply = (resp.choices[0].message.content or "").strip()
+        except Exception as e:
+            reply = f"(AI error: {e})"
+    else:
+        reply = "Set an API key in AI settings to use wizard assist."
+    return jsonify({"reply": reply})
+
+
+@app.route("/api/map/regions")
+def api_map_regions():
+    """List all map regions (continents, countries, states) and map sources for the wizard."""
+    try:
+        return jsonify(wizard_list_regions())
+    except Exception as e:
+        return jsonify({"error": str(e), "regions": [], "grouped": {}, "map_sources": []}), 500
+
+
+@app.route("/api/map/estimate")
+def api_map_estimate():
+    """Estimate tile count and size for a region and zoom range. Query: region, min_zoom, max_zoom."""
+    try:
+        region = (request.args.get("region") or "").strip()
+        min_zoom = int(request.args.get("min_zoom") or 8)
+        max_zoom = int(request.args.get("max_zoom") or 12)
+        if not region:
+            return jsonify({"error": "region required"}), 400
+        result = wizard_estimate(region, min_zoom=min_zoom, max_zoom=max_zoom)
+        if result is None:
+            return jsonify({"error": f"Unknown region: {region}"}), 404
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/updates")
@@ -501,11 +812,21 @@ def ai_query():
                     f"- {u['name']} ({u['device']}): {u.get('tag') or u.get('error', '?')} — {u.get('url', '')}"
                     for u in updates_info
                 ))
+            device_block = _device_context_block_for_ai()
+            system_content = (
+                "You are an inventory and lab assistant. You can answer about hardware inventory, firmware updates, "
+                "and connected devices (serial logs, live status). Given items and/or update info and optional device context, "
+                "reply with a short helpful answer. If the question is only about updates, summarize the updates. "
+                "If the user asks about device logs or status, use the device context (live and historical logs, ports, esptool). "
+                "If listing item IDs, end with a line 'IDS: [\"id1\", \"id2\"]'."
+            )
+            if device_block:
+                system_content += "\n\n--- Device context (connected device logs, historical logs, live status) ---\n" + device_block[:4000]
             user_content = "\n\n".join(parts) + f"\n\nUser question: {query}"
             resp = client.chat.completions.create(
                 model=get_openai_model(),
                 messages=[
-                    {"role": "system", "content": "You are an inventory and lab assistant. You can answer about hardware inventory and firmware updates. Given items and/or update info and a user question, reply with a short helpful answer. If the question is only about updates, summarize the updates. If listing item IDs, end with a line 'IDS: [\"id1\", \"id2\"]'."},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": user_content},
                 ],
                 max_tokens=400,
@@ -592,13 +913,20 @@ def ai_query_stream():
                 for u in updates_info
             ))
         user_content = "\n\n".join(parts) + f"\n\nUser question: {query}"
+        system_content = (
+            "You are an inventory and lab assistant. You can answer about hardware inventory, firmware updates, "
+            "and connected devices (serial logs, live status). If the user asks about device logs or status, use the device context."
+        )
+        device_block = _device_context_block_for_ai()
+        if device_block:
+            system_content += "\n\n--- Device context (connected device logs, historical logs, live status) ---\n" + device_block[:4000]
         full_text = ""
         try:
             client = _openai_client()
             stream = client.chat.completions.create(
                 model=get_openai_model(),
                 messages=[
-                    {"role": "system", "content": "You are an inventory and lab assistant. You can answer about hardware inventory and firmware updates. Given items and/or update info and a user question, reply with a short helpful answer. If the question is only about updates, summarize the updates. If listing item IDs, end with a line 'IDS: [\"id1\", \"id2\"]'."},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": user_content},
                 ],
                 max_tokens=400,
@@ -628,6 +956,159 @@ def ai_query_stream():
     )
 
 
+def _load_setup_context():
+    """Load docs/AGENT_SETUP_CONTEXT.md from repo root. Return empty string if missing."""
+    path = os.path.join(REPO_ROOT, "docs", "AGENT_SETUP_CONTEXT.md")
+    if not os.path.isfile(path):
+        return ""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+SETUP_HELP_SYSTEM_PREFIX = (
+    "You are a setup assistant for this lab. Use the following context to answer. "
+    "The user can ask for setup recommendations, step-by-step wizard guidance, or explanations of what is acceptable in each area (paths, flash, map tiles, project planning, device registry, Docker). "
+    "Be concise and point to the relevant wizard or doc when appropriate.\n\n"
+)
+
+
+@app.route("/api/setup/chat", methods=["POST"])
+def api_setup_chat():
+    """Chat for setup help: system prompt from AGENT_SETUP_CONTEXT.md, optional history, debug context for problem suggestions."""
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []
+    if not message:
+        return jsonify({"error": "message required"}), 400
+
+    setup_doc = _load_setup_context()
+    system_content = SETUP_HELP_SYSTEM_PREFIX + (setup_doc or "Setup context file (docs/AGENT_SETUP_CONTEXT.md) not found.")
+
+    # Inject device context: connected device logs, historical logs, live status (so AI can suggest fixes)
+    try:
+        ctx = get_debug_context()
+        debug_block = (
+            "\n\n--- Device context (connected device logs, historical logs, live status) ---\n"
+            f"Live status: Serial monitor {'active on ' + (ctx.get('serial_port') or '') if ctx.get('serial_active') else 'inactive'}. "
+            f"Ports: {ctx.get('ports_summary', 'unknown')}. "
+            f"esptool: {'ok' if ctx.get('esptool_ok') else 'missing/failed'} ({ctx.get('esptool_message', '')}). "
+        )
+        if ctx.get("serial_tail"):
+            debug_block += f"\nLive device log (last 80 lines):\n{ctx['serial_tail'][-3000:]}\n"
+        if ctx.get("historical_log"):
+            debug_block += f"\nHistorical device log (last 150 lines from persistent log):\n{ctx['historical_log'][-4000:]}\n"
+        if ctx.get("health_problems"):
+            debug_block += f"\nDetected problems: {', '.join(ctx['health_problems'])}. "
+            if ctx.get("health_suggestions"):
+                debug_block += f"Possible fixes: {'; '.join(ctx['health_suggestions'])}. "
+            debug_block += "If the user has not asked something specific, briefly suggest what to do about these problems."
+        system_content += debug_block
+    except Exception:
+        pass
+
+    messages = [{"role": "system", "content": system_content}]
+    for h in history[-10:]:
+        role = (h.get("role") or "user").strip().lower()
+        if role not in ("user", "assistant"):
+            role = "user"
+        content = (h.get("content") or "").strip()
+        if content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+
+    reply = ""
+    if get_openai_api_key():
+        try:
+            client = _openai_client()
+            resp = client.chat.completions.create(
+                model=get_openai_model(),
+                messages=messages,
+                max_tokens=800,
+            )
+            reply = (resp.choices[0].message.content or "").strip()
+        except Exception as e:
+            reply = f"(AI error: {e})"
+    else:
+        reply = "Set an API key in AI API settings to use setup help."
+
+    # Return problems/suggestions so frontend can show banner and prompt user
+    payload = {"reply": reply}
+    try:
+        ctx = get_debug_context()
+        if ctx.get("health_problems"):
+            payload["problems"] = ctx["health_problems"]
+            payload["suggestions"] = ctx.get("health_suggestions") or []
+    except Exception:
+        pass
+    return jsonify(payload)
+
+
+# --- Debug: live device logs, maintenance, troubleshooting ---
+
+@app.route("/api/debug/context")
+def api_debug_context():
+    """Return debug context for AI and UI: serial tail, historical log, ports, esptool, health, live_status."""
+    try:
+        return jsonify(get_debug_context())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ai/device-context")
+def api_ai_device_context():
+    """Return full device context for AI: connected device logs, historical logs, live device status and data.
+    Use this so the AI (or MCP / Cursor) can include device logs and status in prompts."""
+    try:
+        return jsonify(get_debug_context())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/debug/serial", methods=["GET"])
+def api_debug_serial():
+    """Get current serial monitor buffer and active port."""
+    lines, port = serial_get_buffer()
+    return jsonify({"lines": lines, "active_port": port, "active": serial_is_active()})
+
+
+@app.route("/api/debug/serial/start", methods=["POST"])
+def api_debug_serial_start():
+    """Start serial monitor on given port. Body: { port [, baud ] }."""
+    data = request.get_json() or request.form or {}
+    port = (data.get("port") or "").strip()
+    baud = int(data.get("baud") or 115200)
+    ok, msg = serial_start(port, baud)
+    if ok:
+        return jsonify({"success": True, "message": msg})
+    return jsonify({"success": False, "error": msg}), 400
+
+
+@app.route("/api/debug/serial/stop", methods=["POST"])
+def api_debug_serial_stop():
+    """Stop serial monitor."""
+    serial_stop()
+    return jsonify({"success": True})
+
+
+@app.route("/api/debug/tools/health")
+def api_debug_tools_health():
+    """Run health checks (esptool, ports, chip detect, DB). Returns problems and suggestions."""
+    try:
+        return jsonify(run_health_checks())
+    except Exception as e:
+        return jsonify({"checks": [], "problems": [str(e)], "suggestions": []}), 500
+
+
+@app.route("/api/debug/tools/esptool-version")
+def api_debug_tools_esptool():
+    """Return esptool version output."""
+    ok, msg = run_esptool_version()
+    return jsonify({"ok": ok, "message": msg})
+
+
 # --- Backup / Restore / Flash ---
 
 @app.route("/api/flash/ports")
@@ -651,9 +1132,14 @@ def api_flash_devices():
 
 @app.route("/api/flash/artifacts")
 def api_flash_artifacts():
-    """List firmware artifacts and backups (paths for flash/restore)."""
+    """List firmware artifacts and backups (paths for flash/restore).
+    Optional ?firmware=meshtastic|meshcore|launcher to filter artifacts by target (internal, launcher-compatible)."""
+    from config import FIRMWARE_TARGETS
+    firmware = (request.args.get("firmware") or "").strip().lower()
+    if firmware and firmware not in FIRMWARE_TARGETS:
+        firmware = ""
     try:
-        return jsonify({"files": list_artifacts_and_backups()})
+        return jsonify({"files": list_artifacts_and_backups(firmware_filter=firmware or None)})
     except Exception as e:
         return jsonify({"error": str(e), "files": []}), 500
 
@@ -1106,6 +1592,84 @@ def api_projects_ai_stream():
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.route("/api/projects/<proposal_id>/bom/items", methods=["POST"])
+def api_projects_bom_add_item(proposal_id):
+    """Add an inventory item to this project's BOM. Body: { item_id, quantity? }."""
+    proj = load_proposal(proposal_id)
+    if proj is None:
+        return jsonify({"error": "Project not found"}), 404
+    data = request.get_json() or {}
+    item_id = (data.get("item_id") or "").strip()
+    if not item_id:
+        return jsonify({"error": "item_id required"}), 400
+    conn = get_db()
+    if not conn:
+        return jsonify({"error": "Database not found"}), 503
+    row = conn.execute("SELECT id, name, part_number, quantity FROM items WHERE id = ?", (unquote(item_id),)).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "Inventory item not found"}), 404
+    qty = int(data.get("quantity") or row[3] or 1)
+    if qty < 1:
+        qty = 1
+    bom = proj.get("parts_bom") or []
+    entry = {"name": row[1], "part_number": row[2] or "", "quantity": qty}
+    if entry.get("part_number") == "":
+        del entry["part_number"]
+    bom.append(entry)
+    proj["parts_bom"] = bom
+    try:
+        save_proposal(proj)
+        return jsonify(load_proposal(proposal_id))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/projects/<proposal_id>/bom/items/<int:index>", methods=["DELETE"])
+def api_projects_bom_remove_item(proposal_id, index):
+    """Remove BOM row at index (0-based)."""
+    proj = load_proposal(proposal_id)
+    if proj is None:
+        return jsonify({"error": "Project not found"}), 404
+    bom = proj.get("parts_bom") or []
+    if index < 0 or index >= len(bom):
+        return jsonify({"error": "Invalid BOM index"}), 400
+    bom.pop(index)
+    proj["parts_bom"] = bom
+    try:
+        save_proposal(proj)
+        return jsonify(load_proposal(proposal_id))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/inventory/from-bom", methods=["POST"])
+def api_inventory_from_bom():
+    """Add a project BOM row to inventory YAML. Body: { project_id, bom_index, category? }."""
+    data = request.get_json() or {}
+    project_id = (data.get("project_id") or "").strip()
+    bom_index = data.get("bom_index")
+    category = (data.get("category") or "component").strip().lower()
+    if not project_id:
+        return jsonify({"error": "project_id required"}), 400
+    if bom_index is None or not isinstance(bom_index, int):
+        return jsonify({"error": "bom_index (integer) required"}), 400
+    proj = load_proposal(project_id)
+    if proj is None:
+        return jsonify({"error": "Project not found"}), 404
+    bom = proj.get("parts_bom") or []
+    if bom_index < 0 or bom_index >= len(bom):
+        return jsonify({"error": "Invalid bom_index"}), 400
+    row = bom[bom_index]
+    name = (row.get("name") or "").strip() or "Part"
+    part_number = (row.get("part_number") or "").strip() or None
+    quantity = int(row.get("quantity") or 1)
+    ok, msg = add_bom_row_to_inventory(name=name, part_number=part_number, quantity=quantity, category=category)
+    if not ok:
+        return jsonify({"error": msg}), 400
+    return jsonify({"ok": True, "message": msg})
 
 
 @app.route("/api/projects/<proposal_id>/check-inventory", methods=["GET"])

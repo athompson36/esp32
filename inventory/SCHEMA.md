@@ -68,6 +68,16 @@ Use these when applicable; add others as needed.
 - `dimensions_mm` — e.g. "25.4×25.4"  
 - `package` — e.g. "SOT-23", "through-hole"
 
+### Mechanical / PCB & 3D design stack (optional)
+
+For AI-driven enclosure and layout (see [docs/PCB_3D_DESIGN_STACK_SPEC.md](../docs/PCB_3D_DESIGN_STACK_SPEC.md)):
+
+- `length_mm`, `width_mm`, `height_mm` — Part dimensions (mm) for placement and enclosure fit.
+- `footprint` — PCB footprint name (e.g. `SOT-23-5`, `ESP32-WROOM-32`).
+- `mounting` — `pcb`, `standoff`, `panel`, `none`.
+- `model_3d_url` — Optional URL or path to STEP/STL for 3D preview.
+- `model_3d_embed` — Optional primitive: `box`, `cylinder`, or shared shape ID.
+
 ---
 
 ## File layout

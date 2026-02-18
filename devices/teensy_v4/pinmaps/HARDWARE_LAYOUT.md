@@ -1,4 +1,4 @@
-# Teensy 4.0 / 4.1 — Hardware Layout
+# Teensy v4.1 — Hardware Layout
 
 **Boards:** PJRC Teensy 4.0, Teensy 4.1  
 **MCU:** NXP i.MX RT1062 (Cortex-M7, 600–912 MHz)

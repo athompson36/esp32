@@ -1,4 +1,4 @@
-# Teensy 3.2 — Peripherals
+# Teensy v3.2 — Peripherals
 
 | Peripheral | Notes |
 |------------|--------|
