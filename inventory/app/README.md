@@ -56,7 +56,7 @@ python app.py
 
 ## Run with Docker
 
-The app and AI tools (search, updates check, AI query, project planning) can run in a container. Mount the repo so the app can read `inventory.db` and YAML; use a read-write mount if you want to **save project proposals** (they are stored under `artifacts/project_proposals/`).
+The app and AI tools (search, updates check, AI query, project planning) can run in a container. The compose file mounts the **host Docker socket** and the image includes the **Docker CLI**, so the UI can show Docker status and list/start/stop lab containers. Mount the repo so the app can read `inventory.db` and YAML; use a read-write mount if you want to **save project proposals** (they are stored under `artifacts/project_proposals/`).
 
 **From repo root** (ensure `inventory/inventory.db` exists — run `python inventory/scripts/build_db.py` first):
 
@@ -74,11 +74,11 @@ OPENAI_API_KEY=sk-... docker compose -f inventory/app/docker-compose.yml up --bu
 
 Or add to a `.env` file next to `docker-compose.yml` and reference it in the compose file (see `environment` in `docker-compose.yml`).
 
-**Plain `docker run`** (from repo root):
+**Plain `docker run`** (from repo root; add `-v /var/run/docker.sock:/var/run/docker.sock` for Docker status in the UI):
 
 ```bash
 docker build -t inventory-app -f inventory/app/Dockerfile inventory/app
-docker run --rm -p 5050:5050 -v "$(pwd):/workspace" -e REPO_ROOT=/workspace inventory-app
+docker run --rm -p 5050:5050 -v "$(pwd):/workspace" -v /var/run/docker.sock:/var/run/docker.sock -e REPO_ROOT=/workspace inventory-app
 ```
 
 ---
