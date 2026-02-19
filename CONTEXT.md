@@ -53,23 +53,23 @@ Host builds are discouraged unless absolutely required.
 
 # 🧱 Top-Level Architecture
 
-    /cyber-lab
+    esp32/                 # repo: athompson36/esp32
     │
     ├── CONTEXT.md
     │
     ├── docker/
-    ├── orchestrator/
+    ├── orchestrator/      # lab build <device> <firmware> (see scripts/lab-build.sh)
     ├── scripts/
-    ├── toolchains/
+    ├── toolchains/        # (planned) pinned toolchains
     ├── shared/
     ├── artifacts/
-    ├── inventory/      # Hardware catalog: SBCs, controllers, sensors, components (specs + datasheets)
-    ├── ota/
-    ├── datasets/
+    ├── inventory/         # Hardware catalog: SBCs, controllers, sensors, components (specs + datasheets)
+    ├── ota/               # (planned) staged deployments
+    ├── datasets/          # (planned) map data and region definitions
     │
     ├── devices/
-    ├── experimental/
-    └── legacy/
+    ├── experimental/      # (planned) board bring-up, risky firmware
+    └── legacy/            # (planned) historical firmware
 
 ------------------------------------------------------------------------
 

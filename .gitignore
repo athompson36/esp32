@@ -1,4 +1,4 @@
-# === Cyber-Lab: build outputs and toolchain caches (do not commit) ===
+# === Lab (athompson36/esp32): build outputs and toolchain caches (do not commit) ===
 .pio/
 .pioenvs/
 .piolibdeps/

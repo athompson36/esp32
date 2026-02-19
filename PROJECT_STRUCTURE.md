@@ -17,7 +17,7 @@ See [CONTEXT.md](CONTEXT.md) for philosophy and rules; [PROJECT_CONTEXT.md](PROJ
 ## 2. Directory structure
 
 ```
-cyber-lab/
+esp32/                             # repo: athompson36/esp32
 ├── CONTEXT.md                 # Lab contract, device layout, non‑negotiable rules
 ├── PROJECT_CONTEXT.md         # Current phase, next actions (keep on task)
 ├── PROJECT_STRUCTURE.md       # This file — layout, conventions, stacks, deps

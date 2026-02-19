@@ -66,7 +66,7 @@ Lab overlays (e.g. T-Deck trackball calibration) are in **patches**; apply after
 cd devices/t_beam_1w/firmware/meshtastic/repo && ./scripts/apply_lab_patches.sh
 ```
 
-Build from `firmware/<name>/repo`; config uses these paths (see `inventory/app/config.BUILD_CONFIG`).
+Build from `firmware/<name>/repo`; config uses these paths (see `inventory/app/config.py`, `BUILD_CONFIG`).
 
 ## Build
 

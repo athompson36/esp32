@@ -1,8 +1,8 @@
 # Full Feature Roadmap — Cyber-Lab
 
-**Repository:** Prepared for `https://github.com/athompson36/cyber-lab`  
+**Repository:** `https://github.com/athompson36/esp32`  
 **Context:** Cyber-Lab — unified ESP32 development environment (local-first, containerized, deterministic)  
-**Last updated:** 2025-02-17
+**Last updated:** 2026-02-19
 
 ---
 
@@ -20,7 +20,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 |----|---------|--------|--------|
 | L1 | Adopt CONTEXT.md device layout under `/devices` | 🟢 Done | Root device folders migrated to `devices/` with correct naming; T-Beam 1W firmware under `devices/t_beam_1w/firmware/{meshcore,meshtastic}/repo` |
 | L2 | Per-device contract: `firmware/`, `configs/`, `pinmaps/`, `notes/` | 🟢 Done | All device folders have the four subdirs; flipper_zero had configs/pinmaps/notes added |
-| L3 | Firmware layout: `meshtastic/`, `meshcore/`, `expresslrs/`, `custom/` under device | 🟡 Partial | MeshCore present; Meshtastic port in separate project; unify under one device |
+| L3 | Firmware layout: `meshtastic/`, `meshcore/`, `expresslrs/`, `custom/` under device | 🟢 Done | MeshCore + Meshtastic under `devices/t_beam_1w/firmware/{meshcore,meshtastic}/repo`; submodules |
 | L4 | Overlay-only customization; no direct upstream edits | 🟢 Followed | MeshCore/Meshtastic use overlays/patches; preserve |
 
 **Actions:**
@@ -168,7 +168,7 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 ---
 
-## 6. Repo Readiness for GitHub (athompson36/cyber-lab)
+## 6. Repo Readiness for GitHub (athompson36/esp32)
 
 ### 6.1 Structure & Hygiene
 
@@ -293,5 +293,4 @@ Phases: (1) Data & AI, (2) 3D preview, (3) Export formats, (4) Maker upload. See
 
 ---
 
-**Prepared for:** `https://github.com/athompson36/cyber-lab`  
-*(Note: If the repo is private or not yet created, create it and push this lab; use this roadmap as the initial backlog.)*
+**Repository:** `https://github.com/athompson36/esp32`
