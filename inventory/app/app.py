@@ -71,6 +71,7 @@ from debug_ops import (
     get_debug_context,
     run_esptool_version,
     run_health_checks,
+    serial_clear_buffer,
     serial_get_buffer,
     serial_is_active,
     serial_start,
@@ -586,6 +587,86 @@ def api_devices_catalog():
         ]
     flasher_base = data.get("flasher_image_base") or "https://flasher.meshtastic.org/img/devices"
     return jsonify({"vendors": vendors, "devices": devices, "existing_ids": list(existing), "flasher_image_base": flasher_base})
+
+
+@app.route("/api/devices/analyze-datasheet", methods=["POST"])
+def api_devices_analyze_datasheet():
+    """Upload a datasheet PDF; AI extracts specs and either assigns to existing item or suggests new device. Writes design_context/<id>.md for PCB/3D AI."""
+    import tempfile
+    from datasheet_ops import (
+        extract_text_from_pdf,
+        analyze_datasheet_with_ai,
+        write_design_context,
+        save_datasheet_to_design_context,
+    )
+    if not get_openai_api_key():
+        return jsonify({"error": "OpenAI API key required. Set it in Settings."}), 400
+    f = request.files.get("file") or request.files.get("datasheet")
+    if not f or not f.filename or not (f.filename.lower().endswith(".pdf") or f.content_type == "application/pdf"):
+        return jsonify({"error": "Upload a PDF file (datasheet)"}), 400
+    tmp = None
+    try:
+        fd, tmp = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+        f.save(tmp)
+        text = extract_text_from_pdf(tmp)
+        conn = get_db()
+        existing_items = []
+        if conn:
+            try:
+                rows = conn.execute("SELECT id, name, category FROM items LIMIT 500").fetchall()
+                existing_items = [{"id": r[0], "name": r[1] or "", "category": r[2] or ""} for r in rows]
+            finally:
+                conn.close()
+        client = _openai_client()
+        extracted = analyze_datasheet_with_ai(
+            text, existing_items, client, model=get_openai_model()
+        )
+        if extracted.get("error"):
+            return jsonify({"error": extracted["error"], "action": "create", "extracted": extracted}), 400
+        suggested_id = (extracted.get("suggested_id") or "device").strip() or "device"
+        design_context_path = write_design_context(suggested_id, extracted)
+        if extracted.get("action") == "assign" and extracted.get("matched_item_id"):
+            mid = (extracted["matched_item_id"] or "").strip()
+            if mid:
+                rel_pdf = save_datasheet_to_design_context(tmp, mid)
+                if rel_pdf:
+                    conn = get_db()
+                    if conn:
+                        try:
+                            conn.execute(
+                                "UPDATE items SET datasheet_file = ? WHERE id = ?",
+                                (rel_pdf, mid),
+                            )
+                            conn.commit()
+                        finally:
+                            conn.close()
+                design_context_path = write_design_context(mid, extracted) or design_context_path
+                return jsonify({
+                    "success": True,
+                    "action": "assign",
+                    "item_id": mid,
+                    "design_context_path": design_context_path,
+                    "datasheet_file": rel_pdf or None,
+                    "message": f"Datasheet assigned to item '{mid}'. Design context saved.",
+                    "extracted": extracted,
+                })
+        return jsonify({
+            "success": True,
+            "action": "create",
+            "suggested_id": suggested_id,
+            "design_context_path": design_context_path,
+            "message": "New device/item suggested. Create device structure or add to inventory.",
+            "extracted": extracted,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)[:300]}), 500
+    finally:
+        if tmp and os.path.isfile(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
 
 @app.route("/api/devices/scaffold", methods=["POST"])
@@ -1157,6 +1238,13 @@ def api_debug_serial_stop():
     return jsonify({"success": True})
 
 
+@app.route("/api/debug/serial/clear", methods=["POST"])
+def api_debug_serial_clear():
+    """Clear serial buffer (display and AI). Does not stop the monitor."""
+    serial_clear_buffer()
+    return jsonify({"success": True})
+
+
 @app.route("/api/debug/tools/health")
 def api_debug_tools_health():
     """Run health checks (esptool, ports, chip detect, DB). Returns problems and suggestions."""
@@ -1300,6 +1388,21 @@ def api_flash_download_release():
         return jsonify({"success": False, "error": str(e)[:300]}), 500
 
 
+def _flash_error_message(raw: str) -> str:
+    """Strip ANSI codes and return a clear message for common errors (e.g. port busy, timeout)."""
+    if not raw:
+        return "Unknown error"
+    s = re.sub(r"\x1b\[[0-9;]*m", "", raw)
+    s = s.replace("\r", " ").replace("\n", " ").strip()
+    if "port is busy" in s.lower() or "resource temporarily unavailable" in s.lower() or "could not exclusively lock" in s.lower():
+        return "Port is busy or in use. Close Serial Monitor (Debug tab) and any other app using the port, then try again."
+    if "could not open" in s.lower() and ("port" in s.lower() or "doesn't exist" in s.lower()):
+        return "Could not open port. Close Serial Monitor and other apps using it, then try again."
+    if s.strip().lower() == "timeout":
+        return "Backup timed out. Full flash can take 10+ minutes; try again or use a smaller backup (e.g. App partition only)."
+    return s[:400] if len(s) > 400 else s
+
+
 @app.route("/api/flash/backup", methods=["POST"])
 def api_flash_backup():
     """Backup device flash (full, app, or nvs). Returns .bin file download."""
@@ -1311,7 +1414,7 @@ def api_flash_backup():
         return jsonify({"error": "port and device_id required"}), 400
     ok, path_or_err, _ = backup_flash(port, device_id, backup_type)
     if not ok:
-        return jsonify({"error": path_or_err}), 500
+        return jsonify({"error": _flash_error_message(path_or_err)}), 500
     if not os.path.isfile(path_or_err):
         return jsonify({"error": "Backup file not created"}), 500
     return send_file(
@@ -1351,7 +1454,7 @@ def api_flash_restore():
         ok, msg = restore_flash(port, device_id, bin_path)
         if ok:
             return jsonify({"success": True, "message": msg or "Restore complete"})
-        return jsonify({"success": False, "error": msg}), 500
+        return jsonify({"success": False, "error": _flash_error_message(msg)}), 500
     finally:
         if used_temp and bin_path and os.path.isfile(bin_path):
             try:
@@ -1360,13 +1463,31 @@ def api_flash_restore():
                 pass
 
 
+def _flash_addr_from_path(path_arg: str) -> str:
+    """Infer write address from path so UI matches scripts/flash.sh behavior.
+    firmware.factory.bin / *merged*.bin / backups → 0x0; app-only firmware.bin in artifacts → 0x10000."""
+    if not path_arg:
+        return "0x0"
+    p = path_arg.lower()
+    base = os.path.basename(p)
+    if "firmware.factory.bin" in p or "merged" in base or "backup_" in p:
+        return "0x0"
+    if base == "firmware.bin" and ("artifacts" in p or "artifact" in p):
+        return "0x10000"  # app partition only; full image would be firmware.factory.bin
+    return "0x0"
+
+
 @app.route("/api/flash/flash", methods=["POST"])
 def api_flash_flash():
     """Flash firmware from path (artifacts/backups) or uploaded .bin."""
     port = (request.form.get("port") or "").strip()
     device_id = (request.form.get("device_id") or "").strip()
     path_arg = (request.form.get("path") or "").strip()
-    addr = (request.form.get("addr") or "0x0").strip()
+    addr = (request.form.get("addr") or "").strip()
+    if not addr and path_arg:
+        addr = _flash_addr_from_path(path_arg)
+    if not addr:
+        addr = "0x0"
     if not port or not device_id:
         return jsonify({"error": "port and device_id required"}), 400
     bin_path = None
@@ -1390,7 +1511,7 @@ def api_flash_flash():
         ok, msg = flash_firmware(port, device_id, bin_path, addr)
         if ok:
             return jsonify({"success": True, "message": msg or "Flash complete"})
-        return jsonify({"success": False, "error": msg}), 500
+        return jsonify({"success": False, "error": _flash_error_message(msg)}), 500
     finally:
         if used_temp and bin_path and os.path.isfile(bin_path):
             try:

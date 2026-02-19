@@ -1,6 +1,6 @@
 # Lab Docker Containers
 
-Build firmware inside containers; flash from host (macOS). See [CONTEXT.md](../CONTEXT.md) for the container strategy.
+**Build in container, flash from host.** All firmware builds for this lab should run inside the container; do not mix host toolchains with lab firmware. Flash and serial from macOS (or host) only. See [CONTEXT.md](../CONTEXT.md) for the container strategy.
 
 - **SDKs & tools (all devices):** [TOOLS_AND_SDK.md](TOOLS_AND_SDK.md)
 - **Apt/pip dependencies and rationale:** [DEPENDENCIES.md](DEPENDENCIES.md)
@@ -28,8 +28,16 @@ docker build -t platformio-lab -f docker/Dockerfile .
 
 ### Run (example)
 
+From repo root:
+
 ```bash
-docker run --rm -v "$(pwd):/workspace" -w /workspace platformio-lab pio run -e T_Beam_1W_SX1262_repeater
+docker run --rm -v "$(pwd):/workspace" -w /workspace/devices/t_beam_1w/firmware/meshcore/repo platformio-lab pio run -e T_Beam_1W_SX1262_repeater
+```
+
+Or use the minimal orchestrator (builds and copies to `artifacts/<device>/<firmware>/<version>/`):
+
+```bash
+./scripts/lab-build.sh t_beam_1w meshcore T_Beam_1W_SX1262_repeater
 ```
 
 ## Other containers (future)

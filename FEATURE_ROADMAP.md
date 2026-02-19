@@ -19,22 +19,20 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
 | L1 | Adopt CONTEXT.md device layout under `/devices` | 🟢 Done | Root device folders migrated to `devices/` with correct naming; T-Beam 1W firmware under `devices/t_beam_1w/firmware/{meshcore,meshtastic}/repo` |
-| L2 | Per-device contract: `firmware/`, `configs/`, `pinmaps/`, `notes/` | 🔴 Not started | Each device folder must have these four subdirs |
+| L2 | Per-device contract: `firmware/`, `configs/`, `pinmaps/`, `notes/` | 🟢 Done | All device folders have the four subdirs; flipper_zero had configs/pinmaps/notes added |
 | L3 | Firmware layout: `meshtastic/`, `meshcore/`, `expresslrs/`, `custom/` under device | 🟡 Partial | MeshCore present; Meshtastic port in separate project; unify under one device |
 | L4 | Overlay-only customization; no direct upstream edits | 🟢 Followed | MeshCore/Meshtastic use overlays/patches; preserve |
 
 **Actions:**
 
-- Create `devices/t_beam_1w/` (or `tbeam_1w`) with `firmware/`, `configs/`, `pinmaps/`, `notes/`.
-- MeshCore and Meshtastic repos now live under `devices/t_beam_1w/firmware/meshcore/repo` and `firmware/meshtastic/repo`; apply overlays in `firmware/*/overlays/`.
-- Move or reference Meshtastic port → `devices/t_beam_1w/firmware/meshtastic/` (repo + overlays).
-- Populate `pinmaps/` from `TBEAM_1W_PINMAP.md` and variant docs; `notes/` from T-BEAM-1W-FIXES, MESHTASTIC-IMPROVEMENTS, BATTERY-FIX.
+- ~~Create `devices/t_beam_1w/` with contract~~ Done (L1/L2). MeshCore and Meshtastic under `devices/t_beam_1w/firmware/{meshcore,meshtastic}/repo`; overlays in `firmware/*/overlays/`.
+- Populate `pinmaps/` and `notes/` from TBEAM_1W_PINMAP, T-BEAM-1W-FIXES, MESHTASTIC-IMPROVEMENTS, BATTERY-FIX as needed.
 
 ### 2.2 Containers & Toolchains
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| L5 | `platformio-lab` container (Meshtastic, MeshCore, Arduino) | 🔴 Not started | CONTEXT: never mix toolchains; build in container |
+| L5 | `platformio-lab` container (Meshtastic, MeshCore, Arduino) | 🟢 Done | docker/Dockerfile + README; build in container, flash from host |
 | L6 | `esp-idf-lab` container (ESP-IDF, LVGL) | 🔴 Not started | For custom/ESP-IDF-based firmware |
 | L7 | `rust-embedded-lab` (PineTime, Embassy, NRF) | 🔴 Not started | Future |
 | L8 | `rf-lab` (SDR, spectrum, LoRa sniffing) | 🔴 Planned | Future |
@@ -48,23 +46,22 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| L9 | `/orchestrator` — single entry point: `lab build <device> <firmware>` | 🔴 Not started | Select container, mount volumes, run build, export artifacts |
-| L10 | `/artifacts` — versioned outputs: `artifacts/<device>/<firmware>/<version>/` | 🔴 Not started | Never auto-delete artifacts |
+| L9 | `/orchestrator` — single entry point: `lab build <device> <firmware>` | 🟢 Done | scripts/lab-build.sh: device, firmware, env → container build → artifacts/ |
+| L10 | `/artifacts` — versioned outputs: `artifacts/<device>/<firmware>/<version>/` | 🟢 Done | Layout in artifacts/README.md; never auto-delete |
 | L11 | `/ota` — staging, private channels, fleet deployments | 🔴 Planned | Future |
-| L12 | `/shared` — RF tuning, PA limits, thermal, flashing offsets, board quirks | 🔴 Not started | Central place for hardware intelligence; Cursor searches here first |
+| L12 | `/shared` — RF tuning, PA limits, thermal, flashing offsets, board quirks | 🟢 Done | shared/t_beam_1w/ with RF_PA_FAN_PMU.md; devices/t_beam_1w links to it |
 
 **Actions:**
 
-- Create `artifacts/`, `shared/`, optional stubs for `orchestrator/`, `ota/`.
-- Implement minimal orchestrator (e.g. shell script) that invokes correct container and writes to `artifacts/`.
-- Migrate T-Beam 1W RF/PA/fan/PMU notes into `shared/` (e.g. `shared/t_beam_1w/`).
+- ~~Create `artifacts/`, `shared/`~~ Done. `shared/t_beam_1w/` has RF_PA_FAN_PMU.md (L12).
+- ~~Implement minimal orchestrator~~ Done: `scripts/lab-build.sh <device> <firmware> [env]` → build in container, copy to artifacts/.
 
 ### 2.4 Scripts & Toolchain Detection
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| L13 | Top-level `scripts/` for build/flash/validate | 🟡 Partial | Build/flash scripts exist under meshtastic-tbeam-1w-firmware; generalize for lab |
-| L14 | Toolchain detection by presence of `platformio.ini`, `idf.py`, `Cargo.toml`, etc. | 🔴 Not started | Cursor/orchestrator must detect before suggesting commands |
+| L13 | Top-level `scripts/` for build/flash/validate | 🟢 Done | scripts/lab-build.sh, scripts/flash.sh at repo root; validate optional later |
+| L14 | Toolchain detection by presence of `platformio.ini`, `idf.py`, `Cargo.toml`, etc. | 🟢 Done | scripts/detect-toolchain.sh [path] → platformio | idf | cargo | unknown |
 
 ### 2.5 Mobile / Companion Webapp
 
@@ -115,10 +112,10 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| M1 | PlatformIO installed (e.g. `brew install platformio`) | 🟡 Unknown | DEPENDENCY_CHECKLIST |
-| M2 | Meshtastic firmware cloned in `firmware/` | 🟡 Unknown | meshtastic-tbeam-1w-firmware layout |
-| M3 | `env:tbeam-1w` (or equivalent) in `platformio.ini` | 🟡 Template ready | patches/platformio.env.tbeam-1w.ini |
-| M4 | Variant files in `firmware/variants/tbeam_1w/` (variant.h, variant.cpp) | 🟡 Template ready | DEVELOPMENT_PLAN Phase 3 |
+| M1 | PlatformIO installed (e.g. `brew install platformio`) | 🟡 Unknown | Use container (platformio-lab) for builds |
+| M2 | Meshtastic firmware cloned in `firmware/` | 🟢 Done | devices/t_beam_1w/firmware/meshtastic/repo |
+| M3 | `env:tbeam-1w` (or equivalent) in `platformio.ini` | 🟢 Done | firmware/variants/esp32s3/t-beam-1w env t-beam-1w |
+| M4 | Variant files in `firmware/variants/tbeam_1w/` (variant.h, variant.cpp) | 🟢 Done | variants/esp32s3/t-beam-1w/ |
 
 **Actions:**
 
@@ -132,16 +129,16 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 |----|---------|--------|--------|
 | M5 | All GPIOs documented, no placeholders | 🟢 Done | TBEAM_1W_PINMAP.md populated |
 | M6 | PA/LNA (or DIO2/CTRL) and power-enable verified; no guess | 🟢 Done | Pinmap + MeshCore fixes |
-| M7 | Board-specific code behind `#ifdef LILYGO_TBEAM_1W` / VARIANT_TBEAM_1W | 🟡 Pending | Ensure in Meshtastic port |
+| M7 | Board-specific code behind `#ifdef LILYGO_TBEAM_1W` / VARIANT_TBEAM_1W | 🟢 Done | variant.h defines VARIANT_TBEAM_1W; LILYGO_TBEAM_1W/T_BEAM_1W from build; pin guards (SX126X_POWER_EN, RF95_FAN_EN) in shared code |
 
 ### 4.3 Build & Hardware Test
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| M8 | `pio run -e tbeam-1w` (or chosen env) succeeds | 🔴 Pending | After M1–M4 |
-| M9 | Binary in `.pio/build/.../firmware.bin`; size reasonable | 🔴 Pending | |
-| M10 | Flash from host (esptool); serial monitor | 🔴 Pending | scripts/flash.sh |
-| M11 | Runtime: boot, SX1262 init, GPS, display, Meshtastic app discoverable | 🔴 Pending | DEVELOPMENT_PLAN Phase 7 |
+| M8 | `pio run -e tbeam-1w` (or chosen env) succeeds | 🟢 Done | platformio-lab image includes mklittlefs; ./scripts/lab-build.sh t_beam_1w meshtastic t-beam-1w verified |
+| M9 | Binary in `.pio/build/.../firmware.bin`; size reasonable | 🟢 Done | firmware.bin + firmware.factory.bin in artifacts/t_beam_1w/meshtastic/<date>/ |
+| M10 | Flash from host (esptool); serial monitor | 🟢 Done | scripts/flash.sh: artifact or path, auto-detect port |
+| M11 | Runtime: boot, SX1262 init, GPS, display, Meshtastic app discoverable | 🔴 Pending | devices/t_beam_1w/notes/MESHTASTIC_RUNTIME_CHECKLIST.md; run on hardware then mark Done |
 
 **Actions:**
 
@@ -178,10 +175,10 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
 | G1 | Single root CONTEXT.md for lab philosophy and layout | 🟢 Done | |
-| G2 | README.md at root: purpose, quick start, link to CONTEXT.md | 🔴 Not started | Add “Embedded Firmware Lab” README |
-| G3 | .gitignore: build dirs (.pio, build, .idf), artifacts (optional), IDE | 🔴 Not started | Avoid committing build outputs and toolchain caches |
-| G4 | No secrets or local paths in committed files | 🟡 Verify | Check scripts and env files |
-| G5 | License file (e.g. MIT) if publishing | 🔴 Not started | Match or clarify vs Meshtastic/MeshCore |
+| G2 | README.md at root: purpose, quick start, link to CONTEXT.md | 🟢 Done | Add “Embedded Firmware Lab” README |
+| G3 | .gitignore: build dirs (.pio, build, .idf), artifacts (optional), IDE | 🟢 Done | Lab-wide ignore; artifacts/ optional per comment |
+| G4 | No secrets or local paths in committed files | 🟢 Verified | API keys from env or artifacts (artifacts/ ignored); no hardcoded secrets |
+| G5 | License file (e.g. MIT) if publishing | 🟢 Done | LICENSE (MIT); lab docs/structure; firmware repos keep own licenses |
 
 **Actions:**
 
@@ -193,17 +190,17 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| G6 | Devices under `devices/<name>/` with contract (L2) | 🔴 Not started | Unify T-Beam 1W under one device folder |
+| G6 | Devices under `devices/<name>/` with contract (L2) | 🟢 Done | All device folders have firmware/, configs/, pinmaps/, notes/ |
 | G7 | FEATURE_ROADMAP.md at root (this file) | 🟢 Done | |
-| G8 | Changelog or release notes (optional) | 🔴 Not started | For versioned artifacts / OTA later |
+| G8 | Changelog or release notes (optional) | 🟢 Done | CHANGELOG.md at root; versioned artifacts per date |
 
 ### 6.3 CI (Optional)
 
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
-| G9 | CI: build MeshCore T-Beam 1W variants in container | 🔴 Not started | platformio-lab |
-| G10 | CI: build Meshtastic tbeam-1w in container | 🔴 Not started | After M8 |
-| G11 | CI: no flash step (host-only); artifacts as build outputs | 🔴 Not started | |
+| G9 | CI: build MeshCore T-Beam 1W variants in container | 🟢 Done | .github/workflows/build-tbeam1w.yml (matrix: meshcore + meshtastic) |
+| G10 | CI: build Meshtastic tbeam-1w in container | 🟢 Done | Same workflow; env t-beam-1w |
+| G11 | CI: no flash step (host-only); artifacts as build outputs | 🟢 Done | Upload-artifact per firmware; no flash in CI |
 
 ---
 
@@ -216,19 +213,19 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 ### P1 — Lab structure and one device
 
-- L1/L2/L3: `devices/t_beam_1w/` with contract; move or link MeshCore + Meshtastic there; pinmaps/ and notes/.
-- L12: Create `shared/` and move T-Beam 1W RF/PA/fan/PMU notes.
+- ~~L1/L2~~ Done: All devices have contract (`firmware/`, `configs/`, `pinmaps/`, `notes/`); L3 partial (MeshCore + Meshtastic under t_beam_1w).
+- ~~L12~~ Done: `shared/t_beam_1w/` with RF_PA_FAN_PMU.md; device context links to it.
 
 ### P2 — Build and test
 
 - M1–M4: PlatformIO, clone, apply Meshtastic variant, pins.
 - M8–M9: First successful Meshtastic build and artifact path.
-- L5: platformio-lab container and document “build in container”.
-- L10: Artifact directory and orchestrator (even minimal script).
+- ~~L5~~ Done: platformio-lab container and document “build in container”.
+- ~~L9/L10~~ Done: scripts/lab-build.sh; artifacts layout and never auto-delete.
 
 ### P3 — Orchestrator and multi-device
 
-- L9: Orchestrator entry point.
+- ~~L9~~ Done: scripts/lab-build.sh.
 - L13/L14: Scripts and toolchain detection.
 - G6/G9/G10: CI for at least T-Beam 1W (MeshCore + Meshtastic).
 

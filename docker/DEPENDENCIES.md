@@ -35,14 +35,24 @@ Explicit list of **apt** and **pip** packages in the primary lab image, with rat
 
 ---
 
-## Pip packages
+## Pip packages (pinned in Dockerfile for reproducible builds)
 
-| Package | Purpose |
-|---------|--------|
-| **platformio** | Build and library manager for ESP32, Arduino, Teensy, nRF52. |
-| **esptool** | ESP32 flash, merge_bin, image_info; used in T-Beam 1W webflasher and CI. |
-| **pyserial** | Python serial access for config scripts, repeater/room-server CLI automation. |
-| **arduino-cli** | Optional; Arduino builds without PIO. Install may fail; image still usable. |
+| Package | Pinned version | Purpose |
+|---------|----------------|---------|
+| **platformio** | 6.1.19 | Build and library manager for ESP32, Arduino, Teensy, nRF52. |
+| **esptool** | 4.11.0 (from GitHub tag v4.11.0) | ESP32 flash, merge_bin, image_info. PyPI sdists have broken metadata; Dockerfile installs from git. |
+| **pyserial** | 3.5 | Python serial access for config scripts, repeater/room-server CLI automation. |
+| **arduino-cli** | (optional, unpinned) | Arduino builds without PIO. Install may fail; image still usable. |
+
+To change versions: set `ARG PLATFORMIO_VERSION=...` (and `ESPTOOL_VERSION`, `PYSERIAL_VERSION`) in the Dockerfile, then update this table.
+
+---
+
+## Other tools (binary in image)
+
+| Tool | Purpose |
+|------|---------|
+| **mklittlefs** | LittleFS filesystem image builder; required for Meshtastic `t-beam-1w` (data partition). From [earlephilhower/mklittlefs](https://github.com/earlephilhower/mklittlefs) releases. |
 
 ---
 
@@ -50,7 +60,8 @@ Explicit list of **apt** and **pip** packages in the primary lab image, with rat
 
 - **Ubuntu base:** 22.04 (default); change via `BASE_IMAGE`.
 - **Python:** Use system Python 3 for pip installs; avoid `--break-system-packages` where possible (container is ephemeral).
-- **PlatformIO:** Installs its own per-platform toolchains (espressif32, atmelavr, teensy, nordicnrf52) on first build.
+- **PlatformIO:** Pinned for reproducibility; installs its own per-platform toolchains (espressif32, atmelavr, teensy, nordicnrf52) on first build.
+- **mklittlefs:** 4.1.0 (commit 42acb97); see Dockerfile `MKLITTLEFS_VERSION` / `MKLITTLEFS_COMMIT`.
 
 ---
 

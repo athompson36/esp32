@@ -53,6 +53,19 @@ Repo index (firmware, web, web-flasher, Android, Apple, python, protos, docs): [
 
 ---
 
+## ht_mesh_pocket_10000 (Heltec Mesh Pocket 10000 mAh)
+
+| Firmware / project | Repo / URL | Notes |
+|--------------------|------------|--------|
+| **Meshtastic** (upstream) | [meshtastic/firmware](https://github.com/meshtastic/firmware) | nRF52840 + SX1262; envs `heltec-mesh-pocket-10000`, `heltec-mesh-pocket-10000-inkhud`. UF2 via magnetic pogo. |
+| **Meshtastic hardware** | [meshtastic.org/docs/.../meshpocket](https://meshtastic.org/docs/hardware/devices/heltec-automation/meshpocket/) | Specs, flashing, firmware file names. |
+| **Heltec docs** | [docs.heltec.org/.../meshpocket](https://docs.heltec.org/en/ready_to_use/meshpocket/index.html) | Charging, buttons, Web Flasher. |
+| **Web Flasher** | [flasher.meshtastic.org](https://flasher.meshtastic.org) | Select Heltec Mesh Pocket 10000; download UF2; copy to HT-n5262 drive. |
+
+**Device contract:** [devices/ht_mesh_pocket_10000/](devices/ht_mesh_pocket_10000/) — firmware/meshtastic, configs, pinmaps, notes (incl. datasheet & user guide PDFs).
+
+---
+
 ## t_deck_plus (LilyGO T-Deck Plus)
 
 | Firmware / project | Repo / URL | Notes |

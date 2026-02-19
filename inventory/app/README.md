@@ -66,6 +66,16 @@ docker compose -f inventory/app/docker-compose.yml up --build
 
 Then open **http://127.0.0.1:5050**.
 
+**LAN access (tablet, phone, other computer):** Docker Desktop for Mac often only accepts connections to published ports from **localhost**, even with the port bound to `0.0.0.0` and the firewall off. If **http://\<your-Mac-IP\>:5050** hangs or times out, run the app on the host instead so it listens directly on the Mac:
+
+```bash
+# From repo root (stop the Docker container first if it's running)
+./scripts/run_inventory_for_lan.sh
+# or: python inventory/app/app.py
+```
+
+Then open **http://127.0.0.1:5050** on the Mac or **http://\<your-Mac-IP\>:5050** from any device on the same network. The app already binds to `0.0.0.0`, so no Docker layer is involved.
+
 **Optional:** Pass your OpenAI key for AI answers and update summaries:
 
 ```bash
@@ -78,7 +88,7 @@ Or add to a `.env` file next to `docker-compose.yml` and reference it in the com
 
 ```bash
 docker build -t inventory-app -f inventory/app/Dockerfile inventory/app
-docker run --rm -p 5050:5050 -v "$(pwd):/workspace" -v /var/run/docker.sock:/var/run/docker.sock -e REPO_ROOT=/workspace inventory-app
+docker run --rm -p 0.0.0.0:5050:5050 -v "$(pwd):/workspace" -v /var/run/docker.sock:/var/run/docker.sock -e REPO_ROOT=/workspace inventory-app
 ```
 
 ---

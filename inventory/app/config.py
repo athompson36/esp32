@@ -10,6 +10,8 @@ DB_PATH = os.path.join(INVENTORY_DIR, "inventory.db")
 ARTIFACTS_DIR = os.path.join(REPO_ROOT, "artifacts")
 # Persistent device/serial logs for AI and troubleshooting (historical logs)
 DEVICE_LOGS_DIR = os.path.join(ARTIFACTS_DIR, "device_logs")
+# Design context for PCB/3D AI: dimensions, pinout, layout per device/item (one .md per id)
+DESIGN_CONTEXT_DIR = os.path.join(REPO_ROOT, "design_context")
 
 # AI settings file (persisted in artifacts; env OPENAI_API_KEY overrides file)
 AI_SETTINGS_PATH = os.path.join(ARTIFACTS_DIR, "ai_settings.json")
@@ -148,8 +150,8 @@ FIRMWARE_REPOS_FOR_UPDATES = [
 FLASH_DEVICES = {
     "t_beam_1w": {
         "chip": "esp32s3",
-        "flash_size": "8MB",
-        "flash_mode": "dio",
+        "flash_size": "16MB",
+        "flash_mode": "qio",
         "description": "LilyGO T-Beam 1W (ESP32-S3)",
     },
     "t_deck_plus": {
@@ -169,7 +171,7 @@ FIRMWARE_TARGETS = ["meshtastic", "meshcore", "launcher", "bruce", "ghost", "mar
 # Project proposals (saved in container mount under REPO_ROOT)
 PROJECT_PROPOSALS_DIR = os.path.join(REPO_ROOT, "artifacts", "project_proposals")
 
-# Build config: device_id -> firmware_id -> { path (relative to REPO_ROOT), env (PlatformIO env) }
+# Build config: device_id -> firmware_id -> { path, envs, optional build_subdir for PlatformIO project }
 BUILD_CONFIG = {
     "t_beam_1w": {
         "meshcore": {
@@ -179,6 +181,7 @@ BUILD_CONFIG = {
         "meshtastic": {
             "path": "devices/t_beam_1w/firmware/meshtastic/repo",
             "envs": ["tbeam-1w"],
+            "build_subdir": "firmware",  # PlatformIO project is in repo/firmware
         },
     },
 }

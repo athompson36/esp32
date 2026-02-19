@@ -1,0 +1,42 @@
+# CI: build MeshCore and Meshtastic for T-Beam 1W in platformio-lab container.
+# No flash step (host-only). Artifacts uploaded as build outputs. See FEATURE_ROADMAP G9, G10, G11.
+name: Build T-Beam 1W (MeshCore + Meshtastic)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: t_beam_1w
+            firmware: meshcore
+            env: T_Beam_1W_SX1262_repeater
+          - device: t_beam_1w
+            firmware: meshtastic
+            env: t-beam-1w
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build platformio-lab image
+        run: docker build -t platformio-lab -f docker/Dockerfile .
+
+      - name: Build firmware
+        run: |
+          ./scripts/lab-build.sh ${{ matrix.device }} ${{ matrix.firmware }} ${{ matrix.env }} ci
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.firmware }}-tbeam1w
+          path: artifacts/${{ matrix.device }}/${{ matrix.firmware }}/ci/

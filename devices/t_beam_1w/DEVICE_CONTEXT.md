@@ -39,8 +39,20 @@ Single-board LoRa node with ESP32-S3, Semtech SX1262 sub-GHz LoRa, 1W external P
 
 ## Firmware in This Lab
 
-- **MeshCore:** Companion (BLE), Repeater, Room Server — see `firmware/meshcore/repo/`.
+- **MeshCore:** Companion (BLE), Repeater, Room Server — see `firmware/meshcore/repo/`. **Flash verified working** with full factory image at 0x0 (see [notes/T_BEAM_NO_BOOT.md](notes/T_BEAM_NO_BOOT.md)).
 - **Meshtastic:** Port in progress — see `firmware/meshtastic/repo/`.
+
+---
+
+## Flash (verified working)
+
+MeshCore boots correctly when:
+
+1. **Full image at 0x0** — Use **firmware.factory.bin** (bootloader + partitions + boot_app0 + app). The lab build produces it via host merge if the in-container merge fails; the **Backup / Flash** UI only lists full images (bootloader.bin and partitions.bin are excluded).
+2. **Erase when recovering** — If the board won’t boot, erase then re-flash: `ERASE=1 ./scripts/flash.sh t_beam_1w meshcore latest`, or in the UI erase (or use script) then flash **firmware.factory.bin**.
+3. **Flash mode/size** — T-Beam 1W is 16MB QIO. The app and `scripts/flash.sh` pass `--flash_mode qio --flash_size 16MB` for this device so writes are correct.
+
+See [notes/T_BEAM_NO_BOOT.md](notes/T_BEAM_NO_BOOT.md) for troubleshooting (invalid header, ets_loader.c 78, etc.).
 
 ---
 
@@ -59,4 +71,5 @@ See **[shared/t_beam_1w/RF_PA_FAN_PMU.md](../../shared/t_beam_1w/RF_PA_FAN_PMU.m
 
 - LilyGO: [T-Beam 1W product](https://www.lilygo.cc/products/t-beam-1w)
 - Lab: [CONTEXT.md](../../CONTEXT.md), [FEATURE_ROADMAP.md](../../FEATURE_ROADMAP.md)
+- **No-boot / flash:** [notes/T_BEAM_NO_BOOT.md](notes/T_BEAM_NO_BOOT.md)
 - Fixes/improvements: [T-BEAM-1W-FIXES.md](firmware/meshcore/repo/T-BEAM-1W-FIXES.md), [MESHTASTIC-IMPROVEMENTS.md](firmware/meshcore/repo/MESHTASTIC-IMPROVEMENTS.md)

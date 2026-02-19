@@ -39,6 +39,9 @@ def _list_serial_ports_fallback():
 # Port path substrings to exclude (virtual/debug ports that are not ESP32 serial devices)
 _SERIAL_PORT_EXCLUDE = ("debug-console", "bluetooth-incoming", "tty.debug", "cu.debug")
 
+# Artifact .bin files that are components only — do not offer for flash (would write partial image)
+_FLASH_EXCLUDE_BIN = frozenset(("bootloader.bin", "partitions.bin"))
+
 
 def _is_excluded_port(port_path: str, description: str = "") -> bool:
     """True if this port should be excluded from backup/flash/health (e.g. debug-console)."""
@@ -225,15 +228,27 @@ def backup_flash(port: str, device_id: str, backup_type: str = "full"):
         addr = 0
 
     path = os.path.join(BACKUPS_DIR, fname)
+    # Full flash read over serial can take 5–15+ min for 8MB/16MB; use 15 min.
+    backup_timeout = 900 if backup_type == "full" else 300
     ok, msg = _esptool(
         "--chip", chip,
         "--port", port,
         "read-flash", str(addr), str(size), path,
-        timeout=300,
+        timeout=backup_timeout,
     )
     if ok and os.path.isfile(path):
         return True, path, size
     return False, msg or "Read failed", 0
+
+
+def _write_flash_args(dev: dict):
+    """Extra esptool write-flash args from device (flash_mode, flash_size) if set."""
+    args = []
+    if dev.get("flash_mode"):
+        args.extend(("--flash_mode", dev["flash_mode"]))
+    if dev.get("flash_size"):
+        args.extend(("--flash_size", dev["flash_size"]))
+    return args
 
 
 def restore_flash(port: str, device_id: str, bin_path: str):
@@ -244,10 +259,11 @@ def restore_flash(port: str, device_id: str, bin_path: str):
     if not os.path.isfile(bin_path):
         return False, f"File not found: {bin_path}"
     chip = dev["chip"]
+    extra = _write_flash_args(dev)
     ok, msg = _esptool(
         "--chip", chip,
         "--port", port,
-        "write-flash", "0x0", bin_path,
+        "write-flash", *extra, "0x0", bin_path,
         timeout=300,
     )
     return ok, msg
@@ -261,10 +277,11 @@ def flash_firmware(port: str, device_id: str, bin_path: str, addr: str = "0x0"):
     if not os.path.isfile(bin_path):
         return False, f"File not found: {bin_path}"
     chip = dev["chip"]
+    extra = _write_flash_args(dev)
     ok, msg = _esptool(
         "--chip", chip,
         "--port", port,
-        "write-flash", addr, bin_path,
+        "write-flash", *extra, addr, bin_path,
         timeout=300,
     )
     return ok, msg
@@ -499,7 +516,7 @@ def list_artifacts_and_backups(firmware_filter=None):
                     full = os.path.join(fw_path, name)
                     if os.path.isdir(full):
                         for f in os.listdir(full):
-                            if f.endswith(".bin"):
+                            if f.endswith(".bin") and f not in _FLASH_EXCLUDE_BIN:
                                 p = os.path.join(full, f)
                                 results.append({
                                     "path": os.path.relpath(p, REPO_ROOT),
@@ -509,7 +526,7 @@ def list_artifacts_and_backups(firmware_filter=None):
                                     "firmware": fw,
                                     "size": os.path.getsize(p) if os.path.isfile(p) else 0,
                                 })
-                    elif name.endswith(".bin"):
+                    elif name.endswith(".bin") and name not in _FLASH_EXCLUDE_BIN:
                         results.append({
                             "path": os.path.relpath(full, REPO_ROOT),
                             "name": f"{dev}/{fw}/{name}",

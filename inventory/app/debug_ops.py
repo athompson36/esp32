@@ -152,6 +152,12 @@ def serial_is_active() -> bool:
     return _serial_port is not None and _serial_thread is not None and _serial_thread.is_alive()
 
 
+def serial_clear_buffer() -> None:
+    """Clear the in-memory serial buffer (display and AI). Does not stop the monitor."""
+    with _serial_lock:
+        _serial_buffer.clear()
+
+
 def run_esptool_version() -> tuple[bool, str]:
     """Run esptool --version. Returns (success, output or error)."""
     for cmd in ("esptool", "esptool.py"):

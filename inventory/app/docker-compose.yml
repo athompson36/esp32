@@ -1,6 +1,6 @@
 # Run inventory web app + AI tools in Docker.
 # From repo root: docker compose -f inventory/app/docker-compose.yml up -d --build
-# Then open http://127.0.0.1:5050
+# Then open http://127.0.0.1:5050 (or http://<your-lan-ip>:5050 from other devices).
 # restart: unless-stopped — container auto-restarts on failure and starts when Docker daemon starts.
 
 services:
@@ -9,7 +9,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5050:5050"
+      # Bind to all interfaces (0.0.0.0) so the app is reachable from LAN, not only localhost
+      - "0.0.0.0:5050:5050"
     environment:
       - REPO_ROOT=/workspace
       - PORT=5050

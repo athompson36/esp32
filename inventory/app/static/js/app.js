@@ -903,11 +903,21 @@
     const deviceId = document.getElementById("flash-device")?.value?.trim();
     const backupType = document.getElementById("flash-backup-type")?.value || "full";
     const statusEl = document.getElementById("flash-backup-status");
+    const dialog = document.getElementById("backup-progress-dialog");
+    const msgEl = document.getElementById("backup-progress-message");
     if (!port || !deviceId) {
       setFlashStatus("backup-status", "Select port and device.", true);
       return;
     }
-    if (statusEl) statusEl.textContent = "Backing up…";
+    function closeBackupDialog() {
+      if (dialog) dialog.hidden = true;
+    }
+    if (msgEl) {
+      const typeLabel = backupType === "full" ? "Full flash (several minutes)" : backupType === "app" ? "App partition" : "NVS";
+      msgEl.textContent = "Reading " + typeLabel + ". Please wait…";
+    }
+    if (dialog) dialog.hidden = false;
+    if (statusEl) statusEl.textContent = "";
     fetch("/api/flash/backup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -918,6 +928,7 @@
         return r.blob();
       })
       .then((blob) => {
+        closeBackupDialog();
         const name = "backup-" + deviceId + "-" + backupType + "-" + new Date().toISOString().slice(0, 19).replace(/[:-]/g, "") + ".bin";
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
@@ -926,7 +937,10 @@
         URL.revokeObjectURL(a.href);
         setFlashStatus("backup-status", "Download started.", false);
       })
-      .catch((err) => setFlashStatus("backup-status", "Error: " + err.message, true));
+      .catch((err) => {
+        closeBackupDialog();
+        setFlashStatus("backup-status", "Error: " + err.message, true);
+      });
   }
 
   let restoreUploadFile = null;
@@ -1337,10 +1351,12 @@
         return;
       }
       if (serialStatusEl) serialStatusEl.textContent = "Starting…";
+      const baudEl = document.getElementById("debug-serial-baud");
+      const baud = baudEl ? parseInt(baudEl.value, 10) : 115200;
       fetch("/api/debug/serial/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ port: port }),
+        body: JSON.stringify({ port: port, baud: baud }),
       })
         .then((r) => r.json())
         .then((data) => {
@@ -1360,6 +1376,15 @@
         .then(() => {
           if (serialPollTimer) { clearInterval(serialPollTimer); serialPollTimer = null; }
           if (serialStatusEl) serialStatusEl.textContent = "Stopped.";
+          if (serialLogEl) serialLogEl.textContent = "";
+        })
+        .catch(() => {});
+    });
+
+    const serialClearBtn = document.getElementById("debug-serial-clear");
+    serialClearBtn?.addEventListener("click", () => {
+      fetch("/api/debug/serial/clear", { method: "POST" })
+        .then(() => {
           if (serialLogEl) serialLogEl.textContent = "";
         })
         .catch(() => {});
@@ -2093,6 +2118,88 @@
     const FLASHER_IMG_BASE = "https://flasher.meshtastic.org/img/devices";
 
     if (!listEl || !formWrap) return;
+
+    const dropZone = document.getElementById("datasheet-drop-zone");
+    const fileInput = document.getElementById("datasheet-file-input");
+    const dropText = document.getElementById("datasheet-drop-text");
+    const analyzingEl = document.getElementById("datasheet-analyzing");
+    const resultElDs = document.getElementById("datasheet-result");
+    if (dropZone && fileInput) {
+      dropZone.addEventListener("click", (e) => {
+        if (e.target === fileInput) return;
+        fileInput.click();
+      });
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        if (file && file.type === "application/pdf") doDatasheetUpload(file);
+        fileInput.value = "";
+      });
+      dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const file = e.dataTransfer?.files?.[0];
+        if (file && file.type === "application/pdf") doDatasheetUpload(file);
+      });
+    }
+    function doDatasheetUpload(file) {
+      if (!resultElDs || !analyzingEl || !dropText) return;
+      resultElDs.hidden = true;
+      resultElDs.className = "datasheet-result";
+      dropText.hidden = true;
+      analyzingEl.hidden = false;
+      const fd = new FormData();
+      fd.append("file", file);
+      fetch("/api/devices/analyze-datasheet", { method: "POST", body: fd })
+        .then((r) => r.json().then((j) => ({ ok: r.ok, ...j })))
+        .then((data) => {
+          dropText.hidden = false;
+          analyzingEl.hidden = true;
+          resultElDs.hidden = false;
+          if (data.error) {
+            resultElDs.className = "datasheet-result error";
+            resultElDs.innerHTML = "<strong>Error</strong>: " + escapeHtml(data.error);
+            return;
+          }
+          if (data.action === "assign") {
+            resultElDs.className = "datasheet-result assign";
+            resultElDs.innerHTML = "<strong>Matched</strong>: " + escapeHtml(data.message || "") +
+              (data.design_context_path ? " <span class=\"datasheet-result-path\">Context: " + escapeHtml(data.design_context_path) + "</span>" : "") +
+              (data.item_id ? " <a href=\"#\" data-tab=\"inventory\" data-open-item=\"" + escapeHtml(data.item_id) + "\">View in inventory</a>" : "");
+            resultElDs.querySelector("[data-open-item]")?.addEventListener("click", (e) => {
+              e.preventDefault();
+              switchTab("inventory");
+              openDetail(data.item_id);
+            });
+          } else {
+            resultElDs.className = "datasheet-result create";
+            const ex = data.extracted || {};
+            let html = "<strong>New device suggested</strong>: " + escapeHtml(ex.name || data.suggested_id || "device") +
+              (data.design_context_path ? " <span class=\"datasheet-result-path\">Context: " + escapeHtml(data.design_context_path) + "</span>" : "") +
+              "<div class=\"datasheet-result-actions\"><button type=\"button\" class=\"btn-refresh datasheet-create-device-btn\">Create device structure</button></div>";
+            resultElDs.innerHTML = html;
+            resultElDs.querySelector(".datasheet-create-device-btn")?.addEventListener("click", () => {
+              if (formId) formId.value = data.suggested_id || "";
+              if (formName) formName.value = (ex.name || data.suggested_id || "").trim();
+              if (formMcu) formMcu.value = (ex.mcu || "").trim();
+              if (inventoryCategorySelect) inventoryCategorySelect.value = (ex.category || "controller").trim();
+              if (checkAddToInventory) checkAddToInventory.checked = true;
+              if (inventoryCategoryWrap) inventoryCategoryWrap.hidden = false;
+              formWrap.hidden = false;
+              resultElDs.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            });
+          }
+        })
+        .catch((err) => {
+          dropText.hidden = false;
+          analyzingEl.hidden = true;
+          resultElDs.hidden = true;
+          resultElDs.className = "datasheet-result error";
+          resultElDs.innerHTML = "<strong>Error</strong>: " + escapeHtml(err.message || "Upload failed");
+          resultElDs.hidden = false;
+        });
+    }
 
     checkAddToInventory?.addEventListener("change", () => {
       if (inventoryCategoryWrap) inventoryCategoryWrap.hidden = !checkAddToInventory.checked;

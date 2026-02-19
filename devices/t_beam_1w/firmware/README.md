@@ -17,6 +17,8 @@ Per the lab contract, all firmware for this device lives under this directory, w
 | **Prebuilt Meshtastic** | [ksjkl1/LilyGO-TTGO-T-Beam-Meshtastic](https://github.com/ksjkl1/LilyGO-TTGO-T-Beam-Meshtastic) | Binaries + install scripts. |
 | **LilyGO examples** | [LilyGO/TTGO-T-Beam](https://github.com/LilyGO/TTGO-T-Beam) | Examples, factory (legacy). |
 
+**MeshCore flash (verified):** Build with `./scripts/lab-build.sh t_beam_1w meshcore T_Beam_1W_SX1262_repeater`; flash **firmware.factory.bin** at 0x0 (script: `ERASE=1 ./scripts/flash.sh t_beam_1w meshcore latest`; or Backup/Flash UI — select firmware.factory.bin; T-Beam 1W uses qio 16MB). See [../notes/T_BEAM_NO_BOOT.md](../notes/T_BEAM_NO_BOOT.md) if the board won’t boot.
+
 ---
 
 ## Target layout (CONTEXT.md)
@@ -68,7 +70,16 @@ Build from `firmware/<name>/repo`; config uses these paths (see `inventory/app/c
 
 ## Build
 
-- **MeshCore:** From the meshcore repo dir, `pio run -e T_Beam_1W_SX1262_repeater` (or `_room_server`, `_companion_radio_ble`).
-- **Meshtastic:** From the meshtastic port dir, follow `docs/DEVELOPMENT_PLAN.md` and `pio run -e tbeam-1w` (or the env name used there).
+Use the lab orchestrator from repo root (builds in container, writes to `artifacts/<device>/<firmware>/<version>/`):
+
+```bash
+./scripts/lab-build.sh t_beam_1w meshcore T_Beam_1W_SX1262_repeater
+./scripts/lab-build.sh t_beam_1w meshtastic t-beam-1w
+```
+
+- **MeshCore:** Envs `T_Beam_1W_SX1262_repeater`, `T_Beam_1W_SX1262_room_server`, `T_Beam_1W_SX1262_companion_radio_ble`.
+- **Meshtastic:** Env `t-beam-1w`. Requires **mklittlefs** in the build image; the lab `platformio-lab` Docker image includes it (rebuild with `docker build -t platformio-lab -f docker/Dockerfile .` if needed).
+
+**Flash from host:** From repo root, `./scripts/flash.sh` (uses latest Meshtastic or MeshCore artifact) or `./scripts/flash.sh [PORT] /path/to/firmware.factory.bin`.
 
 See [FEATURE_ROADMAP.md](../../../FEATURE_ROADMAP.md) for orchestrator and artifact paths. See [REPOS.md](../../../REPOS.md) for the full lab repo index.

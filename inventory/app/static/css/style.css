@@ -539,6 +539,54 @@ button:hover {
 .flash-status.flash-error {
   color: var(--warning);
 }
+.backup-progress-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.backup-progress-overlay[hidden] {
+  display: none;
+}
+.backup-progress-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  min-width: 280px;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.backup-progress-dialog h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+.backup-progress-dialog p {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.backup-progress-bar-wrap {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.backup-progress-bar {
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  border-radius: 3px;
+  animation: backup-progress-indeterminate 1.2s ease-in-out infinite;
+}
+@keyframes backup-progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
 .flash-patches-row {
   align-items: flex-start;
 }
@@ -869,6 +917,60 @@ button:hover {
   font-size: 1rem;
   font-weight: 600;
 }
+.add-device-datasheet-block {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.add-device-datasheet-heading {
+  margin: 0 0 0.35rem 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.add-device-datasheet-note {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem 0;
+}
+.datasheet-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.datasheet-drop-zone:hover,
+.datasheet-drop-zone:focus {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--text);
+  outline: none;
+}
+.datasheet-drop-zone.dragover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.datasheet-drop-zone .datasheet-analyzing {
+  color: var(--text);
+}
+.datasheet-result {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.datasheet-result.assign { border-left: 4px solid var(--ok); }
+.datasheet-result.create { border-left: 4px solid var(--primary); }
+.datasheet-result.error { border-left: 4px solid var(--error); }
+.datasheet-result-actions { margin-top: 0.5rem; }
 .add-device-note {
   font-size: 0.8125rem;
   color: var(--text-muted);
