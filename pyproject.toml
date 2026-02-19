@@ -1,0 +1,31 @@
+[project]
+name = "cyberdeck-manager"
+version = "0.1.0"
+description = "Device, firmware, map, and flash lifecycle manager — CLI"
+readme = "docs/CYBERDECK_MANAGER_SPEC.md"
+requires-python = ">=3.10"
+dependencies = [
+  "typer[all]>=0.9.0",
+  "rich>=13.0.0",
+  "httpx>=0.25.0",
+  "pyserial>=3.5",
+  "esptool>=4.0",
+]
+
+[project.optional-dependencies]
+web = ["fastapi", "uvicorn"]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+cyberdeck = "cyberdeck_cli.main:app"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["cyberdeck_cli*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

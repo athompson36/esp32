@@ -271,10 +271,10 @@ The Cyberdeck Manager extends the lab into a **device + firmware + map + flash +
 | Firmware registry | 🟢 Done | registry/firmware/{meshcore,meshtastic}.json — upstream, variants, build flags, artifact pattern |
 | Map manager (regions, tiles, SD) | 🔴 Planned | Region scanner, wizard, tile calculator, SD validator |
 | Flash (USB + SD Launcher) | 🟢 Done | Inventory app: esptool USB flash + UF2/SD launcher detection per device |
-| Hardware inspector | 🔴 Planned | Serial/BLE/USB detection, fleet snapshots |
+| Hardware inspector | 🟢 Done | `cyberdeck inspect chip/mac/flash-size/ports` via esptool |
 | RF/CAN presets | 🟢 Done | `registry/rf_presets.json` (USA, EU, custom); CAN in schema |
 | Multi-user & DB | 🟢 Done | cyberdeck_schema.sql: users, flash_history, map_builds, hardware_snapshots, rf_presets |
-| CLI (Typer) + Web (FastAPI) | 🔴 Planned | See scaffold; optional `cyberdeck_cli/`, extend or add web |
+| CLI (Typer) + Web (FastAPI) | 🟢 Done | `cyberdeck_cli/` Typer app: device, firmware, flash, inspect; `pip install -e .` |
 | Docker | 🟢 Done | `docker/Dockerfile.cyberdeck`; pyproject.cyberdeck.toml |
 
 ---
