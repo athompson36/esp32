@@ -1,0 +1,14 @@
+{
+  "id": "lumari_watch",
+  "name": "Lumari Watch",
+  "mcu": "ESP32-S3",
+  "radios": [],
+  "display": "2.06\" 410×502 AMOLED (CO5300 QSPI), FT3168 touch",
+  "battery": "",
+  "storage": "internal flash; 8MB PSRAM",
+  "flash_methods": ["usb_direct"],
+  "compatible_firmware": ["lumari_watch"],
+  "capability": {"chip": "esp32s3", "flash_size": "8MB", "psram": "8MB", "can_support": false, "sd_support": false, "launcher_compatible": false},
+  "device_context": "devices/lumari_watch/DEVICE_CONTEXT.md",
+  "firmware_repo": "https://github.com/athompson36/lumari_watch"
+}

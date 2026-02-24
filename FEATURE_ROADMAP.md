@@ -2,7 +2,7 @@
 
 **Repository:** `https://github.com/athompson36/esp32`  
 **Context:** Cyber-Lab — unified ESP32 development environment (local-first, containerized, deterministic)  
-**Last updated:** 2026-02-19
+**Last updated:** 2026-02-23
 
 ---
 
@@ -139,7 +139,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 | M8 | `pio run -e tbeam-1w` (or chosen env) succeeds | 🟢 Done | platformio-lab image includes mklittlefs; ./scripts/lab-build.sh t_beam_1w meshtastic t-beam-1w verified |
 | M9 | Binary in `.pio/build/.../firmware.bin`; size reasonable | 🟢 Done | firmware.bin + firmware.factory.bin in artifacts/t_beam_1w/meshtastic/<date>/ |
 | M10 | Flash from host (esptool); serial monitor | 🟢 Done | scripts/flash.sh: artifact or path, auto-detect port |
-| M11 | Runtime: boot, SX1262 init, GPS, display, Meshtastic app discoverable | 🔴 Pending | devices/t_beam_1w/notes/MESHTASTIC_RUNTIME_CHECKLIST.md; run on hardware then mark Done |
+| M11 | Runtime: boot, SX1262 init, GPS, display, Meshtastic app discoverable | 🟢 Done | 2026-02-23: three-part flash with DIO; boot verified; checklist in devices/t_beam_1w/notes/MESHTASTIC_RUNTIME_CHECKLIST.md |
 
 **Actions:**
 
@@ -223,7 +223,7 @@ Items from MeshCore README “Road-Map / To-Do” that affect this lab or T-Beam
 
 - ~~M1–M4~~ Done: PlatformIO, clone, Meshtastic variant, pins.
 - ~~M8–M10~~ Done: First successful build, artifacts, flash + serial monitor.
-- M11: Pending hardware runtime test on real T-Beam 1W.
+- ~~M11~~ Done: Hardware runtime test passed (DIO flash fix; Meshtastic boots).
 - ~~L5/L9/L10~~ Done: platformio-lab container, lab-build.sh, artifacts layout.
 
 ### P3 — Orchestrator and multi-device — ALL DONE

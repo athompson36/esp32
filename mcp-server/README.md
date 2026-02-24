@@ -60,7 +60,7 @@ Use **Cursor** with the Docker command so it spawns the container and talks over
 Add the lab MCP server in Cursor so it can call tools and read resources.
 
 1. Open **Cursor Settings → MCP** (or edit the MCP config file directly).
-2. Choose one option (replace `REPO_ROOT` with your **absolute** repo path, e.g. `/Users/andrew/Documents/fs-tech/cyber-lab`):
+2. Choose one option (replace `REPO_ROOT` with your **absolute** repo path, e.g. `/path/to/esp32`):
 
 **Option A — Docker (recommended)**
 

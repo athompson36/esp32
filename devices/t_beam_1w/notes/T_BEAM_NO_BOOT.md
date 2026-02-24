@@ -55,6 +55,20 @@ Put the T-Beam in bootloader mode before running the flash script:
 
 Then run the flash command (or click Flash in the UI) while the board is in this mode.
 
+## 4b. Meshtastic: use DIO, not QIO (ets_loader.c 78)
+
+If the serial monitor shows **mode:QIO**, **load:0x...**, then **ets_loader.c 78** and the board resets, the second-stage bootloader is failing to load the app. Meshtastic t-beam-1w images are built with **Flash mode: DIO** (bootloader and app). Flashing with `--flash-mode qio` can cause this.
+
+**Fix:** Use the lab script (it now uses DIO for Meshtastic) or flash with DIO explicitly:
+
+```bash
+ERASE=1 ./scripts/flash.sh t_beam_1w meshtastic latest
+```
+
+Or with esptool for three-part flash: `--flash-mode dio --flash-size 16MB` for bootloader, partitions, and firmware.
+
+---
+
 ## 5. Serial: "invalid header: 0xffffffff"
 
 If the serial monitor shows **invalid header: 0xffffffff** repeating, the ESP32 is running but reading **erased flash** (0xFF) at the app partition. So either:

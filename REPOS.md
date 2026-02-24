@@ -87,8 +87,19 @@ Multi-tool handheld (STM32WB55): Sub-GHz, RFID, NFC, IR, iButton, BadUSB. Option
 
 ---
 
+## Lumari Watch
+
+| Repo | Description |
+|------|-------------|
+| [athompson36/lumari_watch](https://github.com/athompson36/lumari_watch) | Lumari Watch — firmware and hardware source. Clone under `devices/lumari_watch/firmware/lumari_watch/repo`. |
+
+**Docs:** See repo README and `docs/` (if present). Lab: [devices/lumari_watch/DEVICE_CONTEXT.md](devices/lumari_watch/DEVICE_CONTEXT.md), [devices/lumari_watch/notes/DOCS_INDEX.md](devices/lumari_watch/notes/DOCS_INDEX.md).
+
+---
+
 ## Device mapping (this lab)
 
+- **Lumari Watch:** [athompson36/lumari_watch](https://github.com/athompson36/lumari_watch). See [devices/lumari_watch/firmware/lumari_watch/README.md](devices/lumari_watch/firmware/lumari_watch/README.md).
 - **T-Deck Plus:** Launcher, Bruce, Ghost, Marauder (via Launcher), tdeck-maps, Meshtastic. See [devices/t_deck_plus/firmware/README.md](devices/t_deck_plus/firmware/README.md).
 - **T-Beam 1W:** MeshCore (upstream + mintylinux variant), Meshtastic. See [devices/t_beam_1w/firmware/README.md](devices/t_beam_1w/firmware/README.md).
 - **Flipper Zero:** Official, Unleashed, RogueMaster. Optional WiFi board (ESP32) runs Marauder. See [docs/FLIPPER_ZERO.md](docs/FLIPPER_ZERO.md).

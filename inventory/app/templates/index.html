@@ -370,6 +370,20 @@
               </div>
               <pre id="project-enclosure-text" class="project-notes-pre"></pre>
             </div>
+            <div class="project-hardware-block project-hardware-full project-design-preview-block">
+              <h4>PCB design preview</h4>
+              <p class="project-preview-caption">Board outline and component placement from pinout and wiring. Export pinout/wiring as CSV for KiCad or other EDA.</p>
+              <div class="project-preview-wrap project-preview-pcb-wrap">
+                <canvas id="project-pcb-preview" class="project-preview-canvas" width="400" height="280" aria-label="PCB layout preview"></canvas>
+              </div>
+            </div>
+            <div class="project-hardware-block project-hardware-full project-design-preview-block">
+              <h4>3D print design preview</h4>
+              <p class="project-preview-caption">Enclosure box from design notes (e.g. 80×60×30 mm). Drag to rotate, scroll to zoom.</p>
+              <div class="project-preview-wrap project-preview-3d-wrap">
+                <div id="project-3d-preview" class="project-preview-3d" aria-label="3D enclosure preview"></div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="project-save-row">
@@ -660,4 +674,8 @@
     <button type="button" class="close-detail" id="close-detail" aria-label="Close">×</button>
     <div id="detail-content"></div>
   </section>
+{% endblock %}
+{% block scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 {% endblock %}

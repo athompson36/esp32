@@ -14,18 +14,13 @@
 
 ## 2. Current Phase
 
-**Phase:** **2 — Build & test (Meshtastic T-Beam 1W) (P2)**
+**Phase:** **2 — Build & test (Meshtastic T-Beam 1W) (P2)** — complete (M11 Done 2026-02-23)
 
-**Goal:** Meshtastic firmware builds for tbeam-1w; artifact path defined; flash from host documented.
+**Goal:** Meshtastic tbeam-1w build, flash, and runtime validated on real T-Beam 1W.
 
 **Next actions (in order):**
 
-1. Verify PlatformIO available (host or container).
-2. Clone or confirm Meshtastic firmware under lab layout.
-3. Apply variant template + platformio env; populate pins from pinmap.
-4. First successful `pio run -e tbeam-1w` (or env name).
-5. Document artifact path (e.g. `.pio/build/.../firmware.bin` → `artifacts/`).
-6. scripts/flash.sh (or equivalent) for host flash with esptool.
+1. Pick next roadmap item: future containers (L6–L8), MeshCore upstream tracking (MC1–MC7), or other P4 items. See FEATURE_ROADMAP.md §7–§8.
 
 ---
 
@@ -35,7 +30,7 @@
 |----------|--------|--------|
 | **P0** | Repo hygiene, README, .gitignore, no secrets | Done (Phase 0) |
 | **P1** | Lab structure, one device (t_beam_1w), shared/, artifacts/ | Done (Phase 1 complete) |
-| **P2** | Meshtastic tbeam-1w build, artifact path, flash script | In progress |
+| **P2** | Meshtastic tbeam-1w build, artifact path, flash script | Done (M11 runtime test passed 2026-02-23) |
 | **P3** | Orchestrator, scripts, toolchain detection | Not started |
 | **P4** | CI, extra containers, OTA, changelog | Future |
 
@@ -79,5 +74,5 @@ See [mcp-server/README.md](mcp-server/README.md) for setup and Cursor configurat
 
 ## 7. Last Updated
 
-- **Phase / next actions:** Phase 1 completed; Phase 2 (build & test Meshtastic T-Beam 1W) started.
+- **Phase / next actions:** Phase 2 complete. M11 Done 2026-02-23 (Meshtastic boots; DIO flash fix in scripts/flash.sh).
 - **Review:** Update "Current Phase" and "Next actions" when a phase completes or focus shifts.

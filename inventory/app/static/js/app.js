@@ -43,6 +43,11 @@
       loadFlashDevices();
       loadFlashBuildConfig();
     }
+    if (tabId === "projects") {
+      if (typeof THREE !== "undefined" && !scene3d) init3dPreview();
+      if (currentDesign) update3dPreview(currentDesign);
+      drawPcbPreview(currentDesign);
+    }
   }
 
   function initTabs() {
@@ -1844,6 +1849,160 @@
     if (schematicEl) schematicEl.textContent = d.schematic || "";
     const enclosureEl = document.getElementById("project-enclosure-text");
     if (enclosureEl) enclosureEl.textContent = d.enclosure || "";
+    drawPcbPreview(d);
+    update3dPreview(d);
+  }
+
+  function parseBoardSizeMm(design) {
+    const text = [design.schematic || "", design.enclosure || ""].join(" ");
+    const m = text.match(/(\d+)\s*[x×]\s*(\d+)(?:\s*[x×]\s*(\d+))?\s*mm/i) || text.match(/(\d+)\s*mm\s*[x×]\s*(\d+)/i);
+    if (m) return { w: Math.min(200, Math.max(20, parseInt(m[1], 10))), h: Math.min(200, Math.max(20, parseInt(m[2], 10))) };
+    return { w: 80, h: 60 };
+  }
+
+  function drawPcbPreview(design) {
+    const canvas = document.getElementById("project-pcb-preview");
+    if (!canvas) return;
+    const d = design || currentDesign;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const cw = 400;
+    const ch = 280;
+    if (canvas.width !== cw) canvas.width = cw;
+    if (canvas.height !== ch) canvas.height = ch;
+    const pad = 24;
+    const { w: boardW, h: boardH } = parseBoardSizeMm(d);
+    const scaleMm = Math.min((cw - pad * 2) / boardW, (ch - pad * 2) / boardH);
+    const ox = (cw - boardW * scaleMm) / 2;
+    const oy = (ch - boardH * scaleMm) / 2;
+    ctx.fillStyle = "#0d1117";
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.strokeStyle = "#30363d";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, cw, ch);
+    ctx.fillStyle = "#21262d";
+    ctx.strokeStyle = "#58a6ff";
+    ctx.lineWidth = 2;
+    ctx.fillRect(ox, oy, boardW * scaleMm, boardH * scaleMm);
+    ctx.strokeRect(ox, oy, boardW * scaleMm, boardH * scaleMm);
+    const wiring = d.wiring || [];
+    const pinOuts = d.pin_outs || [];
+    const refs = new Set();
+    wiring.forEach((r) => {
+      if (r.from) refs.add(r.from.split(/[.]/)[0] || r.from);
+      if (r.to) refs.add(r.to.split(/[.]/)[0] || r.to);
+    });
+    if (refs.size === 0 && pinOuts.length) refs.add("MCU");
+    const refList = Array.from(refs).slice(0, 8);
+    const compW = (boardW * scaleMm * 0.9) / Math.max(1, refList.length);
+    const compH = Math.min(20, boardH * scaleMm * 0.25);
+    ctx.fillStyle = "#388bfd";
+    ctx.strokeStyle = "#58a6ff";
+    ctx.font = "10px system-ui, sans-serif";
+    refList.forEach((ref, i) => {
+      const x = ox + (boardW * scaleMm - refList.length * (compW + 4)) / 2 + i * (compW + 4) + 2;
+      const y = oy + boardH * scaleMm / 2 - compH / 2;
+      ctx.fillStyle = "#238636";
+      ctx.fillRect(x, y, compW, compH);
+      ctx.strokeStyle = "#2ea043";
+      ctx.strokeRect(x, y, compW, compH);
+      ctx.fillStyle = "#c9d1d9";
+      ctx.textAlign = "center";
+      ctx.fillText(ref, x + compW / 2, y + compH / 2 + 3);
+    });
+    ctx.textAlign = "left";
+  }
+
+  let scene3d = null;
+  let camera3d = null;
+  let renderer3d = null;
+  let controls3d = null;
+  let enclosureMesh3d = null;
+  let animationId3d = null;
+
+  function init3dPreview() {
+    const container = document.getElementById("project-3d-preview");
+    if (!container || typeof THREE === "undefined") return;
+    if (scene3d) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight || 280;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000);
+    camera.position.set(120, 80, 120);
+    camera.lookAt(0, 0, 0);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    container.appendChild(renderer.domElement);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    const ambient = new THREE.AmbientLight(0x404060);
+    scene.add(ambient);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(40, 60, 40);
+    scene.add(dir);
+    const geo = new THREE.BoxGeometry(80, 30, 60);
+    const mat = new THREE.MeshPhongMaterial({ color: 0x21262d, transparent: true, opacity: 0.95 });
+    const box = new THREE.Mesh(geo, mat);
+    box.position.set(0, 0, 0);
+    scene.add(box);
+    scene3d = scene;
+    camera3d = camera;
+    renderer3d = renderer;
+    controls3d = controls;
+    enclosureMesh3d = box;
+    function animate() {
+      animationId3d = requestAnimationFrame(animate);
+      if (controls3d) controls3d.update();
+      if (renderer3d && scene3d && camera3d) renderer3d.render(scene3d, camera3d);
+    }
+    animate();
+    window.addEventListener("resize", on3dPreviewResize);
+  }
+
+  function on3dPreviewResize() {
+    const container = document.getElementById("project-3d-preview");
+    if (!container || !renderer3d || !camera3d) return;
+    const w = container.clientWidth;
+    const h = container.clientHeight || 280;
+    renderer3d.setSize(w, h);
+    camera3d.aspect = w / h;
+    camera3d.updateProjectionMatrix();
+  }
+
+  function parseEnclosureMm(design) {
+    const text = design.enclosure || "";
+    const m = text.match(/(\d+)\s*[x×]\s*(\d+)\s*[x×]\s*(\d+)\s*mm/i) || text.match(/(\d+)\s*mm\s*[x×]\s*(\d+)\s*mm\s*[x×]\s*(\d+)/i);
+    if (m) return { w: Math.min(300, Math.max(10, parseInt(m[1], 10))), d: Math.min(300, Math.max(10, parseInt(m[2], 10))), h: Math.min(200, Math.max(10, parseInt(m[3], 10))) };
+    const m2 = text.match(/(\d+)\s*[x×]\s*(\d+)\s*mm/i);
+    if (m2) return { w: Math.min(300, parseInt(m2[1], 10)), d: Math.min(300, parseInt(m2[2], 10)), h: 30 };
+    return { w: 80, d: 60, h: 30 };
+  }
+
+  function update3dPreview(design) {
+    const container = document.getElementById("project-3d-preview");
+    if (!container) return;
+    if (typeof THREE === "undefined") {
+      init3dPreviewWhenReady(design);
+      return;
+    }
+    if (!scene3d) init3dPreview();
+    if (!enclosureMesh3d) return;
+    const dim = parseEnclosureMm(design || currentDesign);
+    enclosureMesh3d.geometry.dispose();
+    enclosureMesh3d.geometry = new THREE.BoxGeometry(dim.w, dim.h, dim.d);
+    enclosureMesh3d.position.set(0, 0, 0);
+  }
+
+  function init3dPreviewWhenReady(design) {
+    if (typeof THREE !== "undefined") {
+      init3dPreview();
+      update3dPreview(design);
+      return;
+    }
+    setTimeout(() => init3dPreviewWhenReady(design), 100);
   }
 
   function setProjectExportLinks(projectId) {

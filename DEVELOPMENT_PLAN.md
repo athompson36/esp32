@@ -13,7 +13,7 @@
 | 0.1 | Root README.md (purpose, quick start, link CONTEXT) | G2 | ✅ |
 | 0.2 | Root .gitignore (build dirs, IDE, artifacts optional) | G3 | ✅ |
 | 0.3 | LICENSE (MIT) at root | G5 | ✅ |
-| 0.4 | Audit scripts/config for secrets and local paths | G4 | ⬜ |
+| 0.4 | Audit scripts/config for secrets and local paths | G4 | ✅ |
 
 **Exit criteria:** New clone can read CONTEXT and build container; no credentials in repo.
 

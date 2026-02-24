@@ -66,6 +66,16 @@ Repo index (firmware, web, web-flasher, Android, Apple, python, protos, docs): [
 
 ---
 
+## lumari_watch (Lumari Watch)
+
+| Firmware / project | Repo / URL | Notes |
+|--------------------|------------|--------|
+| **Lumari Watch** | [athompson36/lumari_watch](https://github.com/athompson36/lumari_watch) | ESP-IDF v5.x; Waveshare ESP32-S3-Touch-AMOLED-2.06 (2.06″ 410×502 AMOLED). Clone to `devices/lumari_watch/firmware/lumari_watch/repo`. Build: `idf.py set-target esp32s3`, `idf.py build`, `idf.py flash monitor`. |
+
+**Documentation:** [README](https://github.com/athompson36/lumari_watch) (overview, build, flash); [docs/HARDWARE_REFERENCES.md](https://github.com/athompson36/lumari_watch/blob/main/docs/HARDWARE_REFERENCES.md) (pinout, BSP); [docs/DEPENDENCIES.md](https://github.com/athompson36/lumari_watch/blob/main/docs/DEPENDENCIES.md) (install); [ROADMAP.md](https://github.com/athompson36/lumari_watch/blob/main/ROADMAP.md). Lab index: [devices/lumari_watch/notes/DOCS_INDEX.md](devices/lumari_watch/notes/DOCS_INDEX.md).
+
+---
+
 ## t_deck_plus (LilyGO T-Deck Plus)
 
 | Firmware / project | Repo / URL | Notes |

@@ -85,18 +85,6 @@ if [[ ! -d "$ARTIFACT_DIR" ]]; then
   echo "Run: ./scripts/lab-build.sh $DEVICE_ID $FIRMWARE_ID" >&2
   exit 1
 fi
-# Prefer factory.bin (full flash at 0x0) if present
-if [[ -f "$ARTIFACT_DIR/firmware.factory.bin" ]]; then
-  BIN_PATH="$ARTIFACT_DIR/firmware.factory.bin"
-  ADDR="0x0"
-elif [[ -f "$ARTIFACT_DIR/firmware.bin" ]]; then
-  BIN_PATH="$ARTIFACT_DIR/firmware.bin"
-  # App-only: T-Beam 1W app partition at 0x10000
-  ADDR="0x10000"
-else
-  echo "No firmware.bin or firmware.factory.bin in $ARTIFACT_DIR" >&2
-  exit 1
-fi
 
 # Optional: erase flash first (fixes many no-boot cases). Use ERASE=1 ./scripts/flash.sh ...
 if [[ -n "${ERASE:-}" ]]; then
@@ -105,10 +93,38 @@ if [[ -n "${ERASE:-}" ]]; then
   echo "Erase done. Flashing..."
 fi
 
-# T-Beam 1W MeshCore factory image is built for qio 16MB; pass so boot is reliable
+# ESP32/S3: prefer three-part flash (bootloader + partitions + app) when all three exist — most reliable boot
+# Use DIO to match Meshtastic build (bootloader/firmware image headers say DIO); QIO can cause ets_loader.c 78
+if [[ "$DEVICE_ID" == "t_beam_1w" && -f "$ARTIFACT_DIR/bootloader.bin" && -f "$ARTIFACT_DIR/partitions.bin" && -f "$ARTIFACT_DIR/firmware.bin" ]]; then
+  echo "Flashing three parts to $PORT (bootloader @ 0x0, partitions @ 0x8000, firmware @ 0x10000) with DIO, 16MB..."
+  "$ESPTOOL" --chip esp32s3 --port "$PORT" write-flash --flash-mode dio --flash-size 16MB \
+    0x0 "$ARTIFACT_DIR/bootloader.bin" \
+    0x8000 "$ARTIFACT_DIR/partitions.bin" \
+    0x10000 "$ARTIFACT_DIR/firmware.bin"
+  echo "Done. Power-cycle the device if needed."
+  exit 0
+fi
+
+# Fallback: single image
+if [[ -f "$ARTIFACT_DIR/firmware.factory.bin" ]]; then
+  BIN_PATH="$ARTIFACT_DIR/firmware.factory.bin"
+  ADDR="0x0"
+elif [[ -f "$ARTIFACT_DIR/firmware.bin" ]]; then
+  BIN_PATH="$ARTIFACT_DIR/firmware.bin"
+  ADDR="0x10000"
+else
+  echo "No firmware.bin or firmware.factory.bin in $ARTIFACT_DIR" >&2
+  exit 1
+fi
+
 FLASH_EXTRA=()
 if [[ "$DEVICE_ID" == "t_beam_1w" && -f "$ARTIFACT_DIR/firmware.factory.bin" ]]; then
-  FLASH_EXTRA=(--flash_mode qio --flash_size 16MB)
+  # Meshtastic images are DIO; MeshCore uses QIO
+  if [[ "$FIRMWARE_ID" == "meshtastic" ]]; then
+    FLASH_EXTRA=(--flash-mode dio --flash-size 16MB)
+  else
+    FLASH_EXTRA=(--flash-mode qio --flash-size 16MB)
+  fi
 fi
 
 echo "Flashing $BIN_PATH to $PORT at $ADDR..."
