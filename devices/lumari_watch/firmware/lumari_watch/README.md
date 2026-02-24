@@ -39,4 +39,11 @@ Build outputs live in `repo/build/`. To publish lab artifacts, copy `build/*.bin
 
 ## Lab orchestrator
 
-This firmware uses **ESP-IDF**, not PlatformIO. To integrate with `scripts/lab-build.sh`, add an `esp-idf-lab` container (FEATURE_ROADMAP L6) and extend the build config for `lumari_watch` + `lumari_watch` so `./scripts/lab-build.sh lumari_watch lumari_watch` runs `idf.py build` in the repo and copies artifacts.
+This firmware uses **ESP-IDF**; the lab provides the **esp-idf-lab** container (L6). From repo root, build and copy artifacts with:
+
+```bash
+docker build -t esp-idf-lab -f docker/Dockerfile.esp-idf-lab .
+./scripts/lab-build.sh lumari_watch lumari_watch
+```
+
+Outputs go to `artifacts/lumari_watch/lumari_watch/<date>/` (bootloader.bin, partitions.bin, firmware.bin). Flash from host with `idf.py -p <port> flash` or the inventory app Backup/Flash tab.

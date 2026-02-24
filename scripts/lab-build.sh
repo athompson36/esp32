@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Minimal orchestrator: build device firmware in platformio-lab container, write to artifacts/.
+# Minimal orchestrator: build device firmware in container (platformio-lab or esp-idf-lab), write to artifacts/.
 # Usage: lab-build.sh [device_id] [firmware_id] [env_name]
 # Example: ./scripts/lab-build.sh t_beam_1w meshcore T_Beam_1W_SX1262_repeater
+# Example: ./scripts/lab-build.sh lumari_watch lumari_watch
 # Build in container, flash from host. See CONTEXT.md and docker/README.md.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,12 +18,70 @@ WORK_DIR="$ROOT/devices/$DEVICE_ID/firmware/$FIRMWARE_ID"
 if [ ! -f "$WORK_DIR/platformio.ini" ] && [ -f "$WORK_DIR/firmware/platformio.ini" ]; then
   WORK_DIR="$WORK_DIR/firmware"
 fi
-if [ ! -f "$WORK_DIR/platformio.ini" ]; then
-  echo "lab-build: no platformio.ini at $WORK_DIR" >&2
-  exit 1
+
+# Detect toolchain: PlatformIO vs ESP-IDF (L6)
+TOOLCHAIN=""
+if [ -f "$WORK_DIR/platformio.ini" ]; then
+  TOOLCHAIN="platformio"
+else
+  TOOLCHAIN="$("$ROOT/scripts/detect-toolchain.sh" "$WORK_DIR")"
+  if [ "$TOOLCHAIN" != "idf" ]; then
+    echo "lab-build: no platformio.ini at $WORK_DIR and toolchain is '$TOOLCHAIN' (not idf)" >&2
+    exit 1
+  fi
 fi
 WORK_REL="${WORK_DIR#$ROOT/}"
 
+# Version dir: date or env slug
+VERSION="${4:-$(date +%Y-%m-%d)}"
+ARTIFACT_DIR="$ROOT/artifacts/$DEVICE_ID/$FIRMWARE_ID/$VERSION"
+mkdir -p "$ARTIFACT_DIR"
+
+# --- ESP-IDF path (esp-idf-lab) ---
+if [ "$TOOLCHAIN" = "idf" ]; then
+  # IDF target per device/firmware (set-target before build)
+  case "$DEVICE_ID/$FIRMWARE_ID" in
+    lumari_watch/lumari_watch) IDF_TARGET="esp32s3" ;;
+    *) IDF_TARGET="esp32s3" ;;  # default for ESP-IDF projects
+  esac
+  echo "lab-build: device=$DEVICE_ID firmware=$FIRMWARE_ID (ESP-IDF target=$IDF_TARGET) -> $ARTIFACT_DIR"
+  echo "Running in container (esp-idf-lab)..."
+  docker run --rm \
+    -v "$ROOT:/workspace" \
+    -w "/workspace/$WORK_REL" \
+    -e HOME=/tmp \
+    -e IDF_GIT_SAFE_DIR="/workspace" \
+    esp-idf-lab \
+    bash -c "idf.py set-target $IDF_TARGET && idf.py build"
+  # Copy IDF build outputs: bootloader.bin, partitions.bin, main app .bin
+  BUILD_OUT="$WORK_DIR/build"
+  if [ ! -d "$BUILD_OUT" ]; then
+    echo "lab-build: no build dir at $BUILD_OUT" >&2
+    exit 1
+  fi
+  [ -f "$BUILD_OUT/bootloader.bin" ] && cp "$BUILD_OUT/bootloader.bin" "$ARTIFACT_DIR/" && echo "Copied bootloader.bin"
+  if [ -f "$BUILD_OUT/partitions.bin" ]; then
+    cp "$BUILD_OUT/partitions.bin" "$ARTIFACT_DIR/" && echo "Copied partitions.bin"
+  elif [ -f "$BUILD_OUT/partition_table/partitions.bin" ]; then
+    cp "$BUILD_OUT/partition_table/partitions.bin" "$ARTIFACT_DIR/" && echo "Copied partition_table/partitions.bin"
+  fi
+  # Main app: project-named .bin (e.g. lumari_watch.bin) or first .bin that is not bootloader/partitions
+  APP_BIN=""
+  for b in "$BUILD_OUT"/*.bin; do
+    [ -f "$b" ] || continue
+    case "$(basename "$b")" in bootloader.bin|partitions.bin) continue ;; esac
+    APP_BIN="$b"
+    break
+  done
+  if [ -n "$APP_BIN" ] && [ -f "$APP_BIN" ]; then
+    cp "$APP_BIN" "$ARTIFACT_DIR/firmware.bin"
+    echo "Copied $(basename "$APP_BIN") -> $ARTIFACT_DIR/firmware.bin"
+  fi
+  echo "Done. Flash from host: ./scripts/flash.sh (or idf.py -p <port> flash)"
+  exit 0
+fi
+
+# --- PlatformIO path (platformio-lab) ---
 # Default env per device/firmware
 if [ -z "$ENV_NAME" ]; then
   case "$DEVICE_ID/$FIRMWARE_ID" in
@@ -31,11 +90,6 @@ if [ -z "$ENV_NAME" ]; then
     *) echo "lab-build: pass env name as third argument (e.g. pio run -e <env>)" >&2; exit 1 ;;
   esac
 fi
-
-# Version dir: date or env slug
-VERSION="${4:-$(date +%Y-%m-%d)}"
-ARTIFACT_DIR="$ROOT/artifacts/$DEVICE_ID/$FIRMWARE_ID/$VERSION"
-mkdir -p "$ARTIFACT_DIR"
 
 echo "lab-build: device=$DEVICE_ID firmware=$FIRMWARE_ID env=$ENV_NAME -> $ARTIFACT_DIR"
 echo "Running in container (platformio-lab)..."

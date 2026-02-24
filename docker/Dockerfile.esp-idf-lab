@@ -1,0 +1,20 @@
+# esp-idf-lab: ESP-IDF native builds (LVGL, custom ESP32). L6.
+# Build in container; flash from host. Base: official espressif/idf image.
+# See docker/README.md and CONTEXT.md.
+ARG IDF_TAG=v5.2
+FROM espressif/idf:${IDF_TAG}
+
+# Optional: udev/libusb for future serial passthrough; picocom for serial
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    udev \
+    libusb-1.0-0 \
+    picocom \
+    && rm -rf /var/lib/apt/lists/*
+
+# Lab convention: work in /workspace (orchestrator mounts repo here)
+WORKDIR /workspace
+
+# Allow mounted git repos without "dubious ownership" when running as host user
+ENV IDF_GIT_SAFE_DIR="/workspace"
+
+CMD ["/bin/bash"]

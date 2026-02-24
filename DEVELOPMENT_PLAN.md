@@ -42,12 +42,12 @@
 
 | # | Task | Roadmap ID | Done |
 |---|------|------------|------|
-| 2.1 | Verify PlatformIO available (host or container) | M1 | ⬜ |
-| 2.2 | Clone or confirm Meshtastic firmware under lab layout | M2 | ⬜ |
-| 2.3 | Apply variant template + platformio env; populate pins from pinmap | M3, M4 | ⬜ |
-| 2.4 | First successful `pio run -e tbeam-1w` (or env name) | M8 | ⬜ |
-| 2.5 | Document artifact path (e.g. `.pio/build/.../firmware.bin` → `artifacts/`) | L10 | ⬜ |
-| 2.6 | scripts/flash.sh (or equivalent) for host flash with esptool | M10 | ⬜ |
+| 2.1 | Verify PlatformIO available (host or container) | M1 | ✅ (container) |
+| 2.2 | Clone or confirm Meshtastic firmware under lab layout | M2 | ✅ |
+| 2.3 | Apply variant template + platformio env; populate pins from pinmap | M3, M4 | ✅ |
+| 2.4 | First successful `pio run -e tbeam-1w` (or env name) | M8 | ✅ (lab-build.sh) |
+| 2.5 | Document artifact path (e.g. `.pio/build/.../firmware.bin` → `artifacts/`) | L10 | ✅ (artifacts/README.md) |
+| 2.6 | scripts/flash.sh (or equivalent) for host flash with esptool | M10 | ✅ |
 | 2.7 | platformio-lab Dockerfile built and documented | L5 | ✅ (Dockerfile present) |
 
 **Exit criteria:** Meshtastic tbeam-1w build succeeds; flash procedure documented; artifacts directory used.
@@ -60,11 +60,11 @@
 
 | # | Task | Roadmap ID | Done |
 |---|------|------------|------|
-| 3.1 | Create `orchestrator/` with minimal script: `lab build <device> <firmware>` | L9 | ⬜ |
-| 3.2 | Orchestrator selects container (platformio-lab), mounts workspace, runs build | L9 | ⬜ |
-| 3.3 | Orchestrator writes build output to `artifacts/<device>/<firmware>/<version>/` | L10 | ⬜ |
-| 3.4 | Top-level `scripts/` for build, flash, validate (or link from orchestrator) | L13 | ⬜ |
-| 3.5 | Toolchain detection: document or implement detection of platformio.ini, idf.py, Cargo.toml | L14 | ⬜ |
+| 3.1 | Create `orchestrator/` with minimal script: `lab build <device> <firmware>` | L9 | ✅ (scripts/lab-build.sh) |
+| 3.2 | Orchestrator selects container (platformio-lab or esp-idf-lab), mounts workspace, runs build | L9 | ✅ |
+| 3.3 | Orchestrator writes build output to `artifacts/<device>/<firmware>/<version>/` | L10 | ✅ |
+| 3.4 | Top-level `scripts/` for build, flash, validate (or link from orchestrator) | L13 | ✅ |
+| 3.5 | Toolchain detection: document or implement detection of platformio.ini, idf.py, Cargo.toml | L14 | ✅ (detect-toolchain.sh) |
 
 **Exit criteria:** `lab build t_beam_1w meshtastic` (or similar) works; artifacts under `artifacts/`.
 
@@ -91,7 +91,7 @@
 
 | # | Task | Roadmap ID | Done |
 |---|------|------------|------|
-| 5.1 | esp-idf-lab container (ESP-IDF, LVGL) if T-Deck Launcher or custom ESP32 | L6 | ⬜ |
+| 5.1 | esp-idf-lab container (ESP-IDF, LVGL) if T-Deck Launcher or custom ESP32 | L6 | ✅ |
 | 5.2 | OTA staging layout under `ota/` | L11 | ⬜ |
 | 5.3 | Changelog or release notes for versioned artifacts | G8 | ⬜ |
 | 5.4 | Track MeshCore upstream roadmap (MC1–MC7); update overlays as needed | §5 | ⬜ |

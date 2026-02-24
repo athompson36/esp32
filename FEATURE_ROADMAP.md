@@ -33,7 +33,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 | ID | Feature | Status | Notes |
 |----|---------|--------|--------|
 | L5 | `platformio-lab` container (Meshtastic, MeshCore, Arduino) | 🟢 Done | docker/Dockerfile + README; build in container, flash from host |
-| L6 | `esp-idf-lab` container (ESP-IDF, LVGL) | 🔴 Not started | For custom/ESP-IDF-based firmware |
+| L6 | `esp-idf-lab` container (ESP-IDF, LVGL) | 🟢 Done | docker/Dockerfile.esp-idf-lab (base espressif/idf:v5.2); lab-build.sh supports idf + lumari_watch |
 | L7 | `rust-embedded-lab` (PineTime, Embassy, NRF) | 🔴 Not started | Future |
 | L8 | `rf-lab` (SDR, spectrum, LoRa sniffing) | 🔴 Planned | Future |
 
@@ -41,7 +41,7 @@ This roadmap aligns the **embedded firmware lab** (CONTEXT.md) with current **T-
 
 - ~~Add `docker/` with Dockerfiles for `platformio-lab`~~ Done.
 - ~~Document "build in container, flash from macOS"~~ Done (README, docker/README).
-- Future: `esp-idf-lab`, `rust-embedded-lab`, `rf-lab` as device needs arise.
+- ~~Add `esp-idf-lab`~~ Done (Dockerfile.esp-idf-lab; orchestrator supports `lab-build.sh lumari_watch lumari_watch`). Future: `rust-embedded-lab`, `rf-lab` as device needs arise.
 
 ### 2.3 Build Orchestrator & Artifacts
 

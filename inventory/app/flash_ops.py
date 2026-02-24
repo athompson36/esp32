@@ -420,18 +420,23 @@ def flash_firmware(port: str, device_id: str, bin_path: str, addr: str = "0x0"):
 
 
 def get_build_config():
-    """Return BUILD_CONFIG as a list of { device_id, firmware_id, path, envs, build_subdir? } for the UI."""
+    """Return BUILD_CONFIG as a list of { device_id, firmware_id, path, envs, build_subdir?, toolchain? } for the UI."""
     out = []
     for device_id, firmwares in (BUILD_CONFIG or {}).items():
         for firmware_id, cfg in firmwares.items():
             if not isinstance(cfg, dict):
                 continue
+            envs = cfg.get("envs") or []
+            # IDF builds use lab-build.sh (no env); provide a single placeholder so UI can trigger build
+            if cfg.get("toolchain") == "idf" and not envs:
+                envs = ["default"]
             out.append({
                 "device_id": device_id,
                 "firmware_id": firmware_id,
                 "path": cfg.get("path", ""),
-                "envs": cfg.get("envs") or [],
+                "envs": envs,
                 "build_subdir": cfg.get("build_subdir"),
+                "toolchain": cfg.get("toolchain") or "platformio",
             })
     return out
 
@@ -459,19 +464,48 @@ def list_patches(device_id: str, firmware_id: str):
 
 def build_firmware(device_id: str, firmware_id: str, env_name: str, patch_paths=None, timeout: int = 300, clean: bool = False, verbose: bool = False):
     """
-    Run PlatformIO build for the given device/firmware/env. Optionally apply patch_paths (list of
-    paths relative to repo) before building; tree is reverted after. If clean, run clean target first.
-    If verbose, pass -v to pio. Copy resulting .bin to artifacts.
-    Returns (ok: bool, path_or_error: str). path is relative to REPO_ROOT.
+    Run build for the given device/firmware. For PlatformIO: env required, pio run -e <env>, copy to artifacts.
+    For ESP-IDF (toolchain idf): run scripts/lab-build.sh; no env. Optionally apply patch_paths; if clean, run clean first.
+    Returns (ok: bool, path_or_error: str). path is relative to REPO_ROOT (artifact dir or firmware.bin).
     """
     if not BUILD_CONFIG or device_id not in BUILD_CONFIG or firmware_id not in BUILD_CONFIG[device_id]:
         return False, "Unknown device or firmware"
     cfg = BUILD_CONFIG[device_id][firmware_id]
     path = (cfg.get("path") or "").strip()
+    toolchain = cfg.get("toolchain") or "platformio"
     envs = cfg.get("envs") or []
+
+    # IDF path: run lab-build.sh (build in esp-idf-lab container), no env
+    if toolchain == "idf":
+        script = os.path.join(REPO_ROOT, "scripts", "lab-build.sh")
+        if not os.path.isfile(script):
+            return False, "scripts/lab-build.sh not found"
+        try:
+            r = subprocess.run(
+                [script, device_id, firmware_id, ""],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            if r.returncode != 0:
+                return False, (r.stderr or r.stdout or "IDF build failed")[:500]
+            # Script writes to artifacts/<device>/<firmware>/<date>/
+            version = datetime.now().strftime("%Y-%m-%d")
+            artifact_dir = os.path.join(ARTIFACTS_DIR, device_id, firmware_id, version)
+            if os.path.isdir(artifact_dir):
+                fw_bin = os.path.join(artifact_dir, "firmware.bin")
+                return True, os.path.relpath(fw_bin, REPO_ROOT) if os.path.isfile(fw_bin) else os.path.relpath(artifact_dir, REPO_ROOT)
+            return True, os.path.relpath(os.path.join(ARTIFACTS_DIR, device_id, firmware_id), REPO_ROOT)
+        except subprocess.TimeoutExpired:
+            return False, "Build timed out"
+        except Exception as e:
+            return False, str(e)[:300]
+
+    # PlatformIO path
     if env_name not in envs:
         env_name = (envs[0] if envs else "")
-    if not env_name:
+    if not env_name or env_name == "default":
         return False, "No build env specified"
     build_subdir = cfg.get("build_subdir")
     repo_dir = os.path.join(REPO_ROOT, path)

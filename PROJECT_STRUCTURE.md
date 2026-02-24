@@ -51,8 +51,10 @@ esp32/                             # repo: athompson36/esp32
 │   ├── AGENT_FRONTEND_CONTEXT.md
 │   └── CYBERDECK_MANAGER_SPEC.md, cyberdeck_scaffold.md, etc.
 │
-├── docker/                    # PlatformIO and lab build images
-│   ├── Dockerfile             # platformio-lab (ESP32, Arduino, Teensy, ARM) — part of Cyber-Lab
+├── docker/                    # Lab build images (toolchain-specific)
+│   ├── Dockerfile             # platformio-lab (ESP32, Arduino, Teensy, ARM)
+│   ├── Dockerfile.esp-idf-lab # esp-idf-lab (ESP-IDF v5, LVGL — Lumari Watch, custom ESP32)
+│   ├── README.md, DEPENDENCIES.md
 │   └── TOOLS_AND_SDK.md
 │
 ├── inventory/                 # Hardware catalog and web app
@@ -108,8 +110,8 @@ esp32/                             # repo: athompson36/esp32
 - **Device IDs:** Lowercase, underscores (e.g. `t_beam_1w`, `t_deck_plus`). Match `devices/<id>/` and `registry/devices/<id>.json`.
 - **Catalog items:** Unique `id` (slug) across all YAML in `inventory/items/`. Categories: `sbc`, `controller`, `sensor`, `accessory`, `component`. See [inventory/SCHEMA.md](inventory/SCHEMA.md).
 - **Paths:** Run Flask app from **repo root**: `python inventory/app/app.py`. DB path overridable in Settings → Paths; stored in `artifacts/path_settings.json`; used on next app start.
-- **Builds:** Firmware builds in container (`platformio-lab`). Flash from host (esptool). See [CONTEXT.md](CONTEXT.md).
-- **Containers:** Lab images: `cyber-lab-mcp`, `inventory-app` / `app-inventory`, `platformio-lab`. Compose files use `restart: unless-stopped` for auto-restart and start with daemon.
+- **Builds:** Firmware builds in container (`platformio-lab` or `esp-idf-lab`). Flash from host (esptool). See [CONTEXT.md](CONTEXT.md).
+- **Containers:** Lab images: `cyber-lab-mcp`, `inventory-app` / `app-inventory`, `platformio-lab`, `esp-idf-lab`. Compose files use `restart: unless-stopped` for auto-restart and start with daemon.
 - **Agent context:** Setup and guidance in `docs/AGENT_*.md`. MCP exposes `project://setup-context`, `project://database-context`, etc., and tools `get_setup_help`, `get_lab_guidance`.
 - **Add device wizard:** Catalog in `inventory/app/device_catalog.json`; scaffold via **Add device** tab (API: GET `/api/devices/catalog`, POST `/api/devices/scaffold`). Creates `devices/<id>/` and `registry/devices/<id>.json` with doc links in DEVICE_CONTEXT.
 
@@ -121,7 +123,7 @@ esp32/                             # repo: athompson36/esp32
 |------|--------|----------------|
 | **Inventory web app** | Python 3.12, Flask 3.x | `python inventory/app/app.py` (from repo root) or `docker compose -f inventory/app/docker-compose.yml up -d` |
 | **MCP server** | Node ≥18, TypeScript 5 | `npm run build` in `mcp-server/`; run via Cursor (stdio) or `node dist/index.js` |
-| **Firmware builds** | PlatformIO (in container) | `docker run --rm -v "$(pwd):/workspace" -w /workspace platformio-lab pio run -e <env>` |
+| **Firmware builds** | PlatformIO or ESP-IDF (in container) | `platformio-lab`: `pio run -e <env>`; `esp-idf-lab`: `idf.py build`. Orchestrator: `scripts/lab-build.sh <device> <firmware> [env]`. |
 | **Map / scripts** | Python 3, PyYAML | `scripts/map_wizard.py`, `scripts/map_tiles/`, `inventory/scripts/build_db.py` |
 
 ---
@@ -171,3 +173,4 @@ Rebuild after app/MCP code changes: `./scripts/rebuild-containers.sh`. See [docs
 ## 8. Last updated
 
 - **Structure / stacks / deps:** Document created; update this section and relevant sections when you add features, change layout, or change dependencies.
+- **2026-02-23:** L6 esp-idf-lab added (docker/Dockerfile.esp-idf-lab), lab-build.sh IDF path and Lumari Watch, BUILD_CONFIG + FLASH_DEVICES for lumari_watch.

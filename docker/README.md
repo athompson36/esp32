@@ -40,9 +40,41 @@ Or use the minimal orchestrator (builds and copies to `artifacts/<device>/<firmw
 ./scripts/lab-build.sh t_beam_1w meshcore T_Beam_1W_SX1262_repeater
 ```
 
+## esp-idf-lab (L6)
+
+For **ESP-IDF native** projects (no PlatformIO): custom firmware, LVGL, Lumari Watch, T-Deck Launcher. Based on official [espressif/idf](https://hub.docker.com/r/espressif/idf) image (ESP-IDF v5.2).
+
+### Build
+
+```bash
+docker build -t esp-idf-lab -f docker/Dockerfile.esp-idf-lab .
+```
+
+Optional: pin a different IDF version, e.g. `--build-arg IDF_TAG=v5.1`.
+
+### Run (example)
+
+From repo root, for a cloned Lumari Watch repo:
+
+```bash
+docker run --rm -v "$(pwd):/workspace" -w /workspace/devices/lumari_watch/firmware/lumari_watch/repo \
+  -e HOME=/tmp esp-idf-lab bash -c "idf.py set-target esp32s3 && idf.py build"
+```
+
+Or use the orchestrator (builds and copies to `artifacts/<device>/<firmware>/<version>/`):
+
+```bash
+./scripts/lab-build.sh lumari_watch lumari_watch
+```
+
+### Included
+
+- ESP-IDF (version set by `IDF_TAG`, default v5.2), `idf.py`, CMake, Ninja
+- udev, libusb, picocom (serial when device passed through)
+- `IDF_GIT_SAFE_DIR=/workspace` so mounted git repos do not trigger "dubious ownership"
+
 ## Other containers (future)
 
-- **esp-idf-lab**: ESP-IDF native, LVGL.
 - **rust-embedded-lab**: PineTime (Embassy), NRF, Rust targets.
 - **rf-lab**: SDR, spectrum, LoRa sniffing.
 

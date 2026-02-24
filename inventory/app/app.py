@@ -387,14 +387,14 @@ def _docker_images():
         if out.returncode != 0:
             return []
         all_images = [line.strip() for line in out.stdout.strip().splitlines() if line.strip()]
-        wanted = {"cyber-lab-mcp", "inventory-app", "app-inventory", "platformio-lab"}
+        wanted = {"cyber-lab-mcp", "inventory-app", "app-inventory", "platformio-lab", "esp-idf-lab"}
         return [img for img in all_images if img.split(":")[0] in wanted]
     except Exception:
         return []
 
 
 # Lab-related image/name prefixes for container list (only show these)
-_DOCKER_LAB_NAMES = {"app-inventory", "inventory-app", "cyber-lab-mcp", "platformio-lab", "inventory", "mcp", "platformio"}
+_DOCKER_LAB_NAMES = {"app-inventory", "inventory-app", "cyber-lab-mcp", "platformio-lab", "esp-idf-lab", "inventory", "mcp", "platformio", "idf"}
 
 
 def _docker_containers():
@@ -545,6 +545,15 @@ def api_docker_tools():
             "available": "platformio-lab" in image_names,
             "command": "docker run --rm -v REPO:/workspace -w /workspace platformio-lab pio run -e ENV",
             "build": "docker build -t platformio-lab -f docker/Dockerfile .",
+        },
+        {
+            "id": "esp-idf-lab",
+            "name": "ESP-IDF / build image",
+            "description": "ESP-IDF native, LVGL (e.g. Lumari Watch). Build with idf.py in container.",
+            "type": "docker",
+            "available": "esp-idf-lab" in image_names,
+            "command": "docker run --rm -v REPO:/workspace -w /workspace esp-idf-lab idf.py build",
+            "build": "docker build -t esp-idf-lab -f docker/Dockerfile.esp-idf-lab .",
         },
         {
             "id": "firmware-updates",

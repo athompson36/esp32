@@ -166,6 +166,12 @@ FLASH_DEVICES = {
         "flash_method": "uf2",
         "description": "Heltec Mesh Pocket 10000 (nRF52840, UF2 - magnetic pogo)",
     },
+    "lumari_watch": {
+        "chip": "esp32s3",
+        "flash_size": "8MB",
+        "flash_mode": "dio",
+        "description": "Lumari Watch (Waveshare ESP32-S3-Touch-AMOLED-2.06)",
+    },
 }
 
 # Backups stored here (relative to REPO_ROOT); create if missing
@@ -188,6 +194,13 @@ BUILD_CONFIG = {
             "path": "devices/t_beam_1w/firmware/meshtastic/repo",
             "envs": ["tbeam-1w"],
             "build_subdir": "firmware",  # PlatformIO project is in repo/firmware
+        },
+    },
+    "lumari_watch": {
+        "lumari_watch": {
+            "path": "devices/lumari_watch/firmware/lumari_watch/repo",
+            "toolchain": "idf",
+            "idf_target": "esp32s3",
         },
     },
 }

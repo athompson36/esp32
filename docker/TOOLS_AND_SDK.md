@@ -75,9 +75,20 @@ Single reference for **SDKs**, **CLI tools**, and **Docker** usage across all de
 
 ---
 
+## Container: esp-idf-lab
+
+**Image:** Built from `docker/Dockerfile.esp-idf-lab`. Base: `espressif/idf:v5.2`. Use for **ESP-IDF native** builds (no PlatformIO); **flash and serial** from host.
+
+| Target | SDK / toolchain | How | Notes |
+|--------|------------------|-----|--------|
+| **ESP32 / ESP32-S3** | ESP-IDF v5.x | `idf.py set-target <target>` then `idf.py build` | Lumari Watch, T-Deck Launcher (LVGL), custom ESP32 |
+
+Orchestrator: `./scripts/lab-build.sh lumari_watch lumari_watch` runs in esp-idf-lab and copies `build/*.bin` to artifacts.
+
+---
+
 ## Other containers (future)
 
-- **esp-idf-lab**: ESP-IDF only, LVGL (T-Deck Launcher, custom ESP32).
 - **rust-embedded-lab**: PineTime (Embassy), NRF, Cargo.
 - **rf-lab**: SDR (gqrx, rtl-sdr), spectrum, LoRa sniffing.
 
