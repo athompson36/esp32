@@ -4,6 +4,7 @@
     <button type="button" class="tab-btn active" role="tab" id="tab-btn-search" data-tab="search" aria-selected="true">Search</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-settings" data-tab="settings" aria-selected="false">AI settings</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-docker" data-tab="docker" aria-selected="false">Docker &amp; tools</button>
+    <button type="button" class="tab-btn" role="tab" id="tab-btn-workspace" data-tab="workspace" aria-selected="false">Workspace</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-flash" data-tab="flash" aria-selected="false">Backup / Flash</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-device-config" data-tab="device-config" aria-selected="false">Device config</button>
     <button type="button" class="tab-btn" role="tab" id="tab-btn-debug" data-tab="debug" aria-selected="false">Debug</button>
@@ -40,7 +41,12 @@
       <h2 class="settings-heading">AI API settings</h2>
       <button type="button" id="btn-settings-save" class="btn-refresh">Save</button>
     </div>
-    <p class="settings-note">Configure the API key and model for AI query and project planning. Key can also be set via <code>OPENAI_API_KEY</code> (env overrides this). Stored under <code>artifacts/ai_settings.json</code>.</p>
+    <p class="settings-note">OpenAI-compatible API: used for AI query, project planning, setup help, and add-device wizard. Works with OpenAI, Azure OpenAI, or any proxy that speaks the OpenAI API (set Base URL). Key can also be set via <code>OPENAI_API_KEY</code> (env overrides file). Stored in <code>artifacts/ai_settings.json</code>.</p>
+    <div class="settings-status-block" id="settings-ai-status-block" aria-live="polite">
+      <span class="settings-status-label">AI API connection:</span>
+      <span id="settings-ai-connection-status" class="settings-status-badge">—</span>
+      <span id="settings-ai-connection-message" class="settings-status-message"></span>
+    </div>
     <div class="settings-fields">
       <div class="settings-row">
         <label for="settings-api-key">API key</label>
@@ -49,11 +55,11 @@
       </div>
       <div class="settings-row">
         <label for="settings-model">Model</label>
-        <input type="text" id="settings-model" placeholder="gpt-4o-mini" autocomplete="off">
+        <input type="text" id="settings-model" placeholder="gpt-4o-mini" autocomplete="off" title="e.g. gpt-4o-mini, gpt-4o, or your provider's model id">
       </div>
       <div class="settings-row">
         <label for="settings-base-url">Base URL</label>
-        <input type="text" id="settings-base-url" placeholder="Optional (e.g. OpenAI-compatible proxy)" autocomplete="off">
+        <input type="text" id="settings-base-url" placeholder="Optional: e.g. https://api.openai.com/v1 or proxy URL" autocomplete="off">
       </div>
     </div>
     <span id="settings-save-status" class="flash-status"></span>
@@ -63,27 +69,50 @@
       <h2 class="settings-heading">Paths</h2>
       <button type="button" id="btn-settings-paths-save" class="btn-refresh">Save paths</button>
     </div>
-    <p class="settings-note">Paths for Docker container (name or ID), frontend, backend, database, and MCP server. Stored under <code>artifacts/path_settings.json</code>. Database path is used on next app start.</p>
+    <p class="settings-note">Docker container (name or ID) and paths used by the app and MCP. When running in Docker, repo is mounted at <code>/workspace</code>; defaults below match that. Stored in <code>artifacts/path_settings.json</code>. Database path is applied on next app start.</p>
+    <div class="settings-status-block settings-paths-status-block" id="settings-paths-status-block" aria-live="polite">
+      <div class="settings-path-status-row">
+        <span class="settings-status-label">Docker:</span>
+        <span id="settings-docker-status-badge" class="settings-status-badge">—</span>
+        <span id="settings-docker-status-message" class="settings-status-message"></span>
+      </div>
+      <div class="settings-path-status-row">
+        <span class="settings-status-label">Frontend:</span>
+        <span id="settings-frontend-status-badge" class="settings-status-badge">—</span>
+      </div>
+      <div class="settings-path-status-row">
+        <span class="settings-status-label">Backend:</span>
+        <span id="settings-backend-status-badge" class="settings-status-badge">—</span>
+      </div>
+      <div class="settings-path-status-row">
+        <span class="settings-status-label">Database:</span>
+        <span id="settings-database-status-badge" class="settings-status-badge">—</span>
+      </div>
+      <div class="settings-path-status-row">
+        <span class="settings-status-label">MCP server:</span>
+        <span id="settings-mcp-status-badge" class="settings-status-badge">—</span>
+      </div>
+    </div>
     <div class="settings-fields">
       <div class="settings-row">
         <label for="settings-docker-container">Docker container</label>
-        <input type="text" id="settings-docker-container" placeholder="Container name or ID (e.g. cyber-lab-mcp)" autocomplete="off">
+        <input type="text" id="settings-docker-container" placeholder="e.g. cyber-lab-mcp or container ID" autocomplete="off">
       </div>
       <div class="settings-row">
         <label for="settings-frontend-path">Frontend path</label>
-        <input type="text" id="settings-frontend-path" placeholder="Path to frontend app" autocomplete="off">
+        <input type="text" id="settings-frontend-path" placeholder="e.g. /workspace (repo root in Docker) or local repo path" autocomplete="off">
       </div>
       <div class="settings-row">
         <label for="settings-backend-path">Backend path</label>
-        <input type="text" id="settings-backend-path" placeholder="Path to backend app" autocomplete="off">
+        <input type="text" id="settings-backend-path" placeholder="e.g. /workspace/inventory/app (this app in Docker)" autocomplete="off">
       </div>
       <div class="settings-row">
         <label for="settings-database-path">Database path</label>
-        <input type="text" id="settings-database-path" placeholder="Path to inventory database" autocomplete="off">
+        <input type="text" id="settings-database-path" placeholder="e.g. /workspace/inventory/inventory.db" autocomplete="off">
       </div>
       <div class="settings-row">
         <label for="settings-mcp-server-path">MCP server path</label>
-        <input type="text" id="settings-mcp-server-path" placeholder="Path to MCP server (e.g. mcp-server dir)" autocomplete="off">
+        <input type="text" id="settings-mcp-server-path" placeholder="e.g. /workspace/mcp-server" autocomplete="off">
       </div>
     </div>
     <span id="settings-paths-save-status" class="flash-status"></span>
@@ -121,6 +150,40 @@
       </div>
     </div>
     <div class="docker-tools" id="docker-tools"></div>
+  </section>
+  </section>
+
+  <section class="tab-panel" id="panel-workspace" role="tabpanel" aria-labelledby="tab-btn-workspace" hidden>
+  <section class="workspace-section" id="workspace-section">
+    <div class="workspace-heading-row">
+      <h2 class="workspace-heading">Workspace</h2>
+      <div class="workspace-controls">
+        <label for="workspace-camera">Camera</label>
+        <select id="workspace-camera">
+          <option value="0">Camera 0</option>
+        </select>
+        <button type="button" id="btn-workspace-refresh" class="btn-refresh">Refresh</button>
+      </div>
+    </div>
+    <p class="workspace-note">Live view from the server webcam (4K USB recommended). Stream is from this app’s host; if the app runs in Docker, pass the device through (e.g. uncomment <code>devices: - /dev/video0</code> in <code>docker-compose.yml</code>, or <code>--device /dev/video0</code> when running the container).</p>
+    <div class="workspace-layout">
+      <div class="workspace-feed-col">
+        <div class="workspace-feed-wrap">
+          <img id="workspace-feed" class="workspace-feed" src="" alt="Workspace camera feed" crossorigin="anonymous">
+          <div id="workspace-feed-placeholder" class="workspace-feed-placeholder" aria-live="polite">Loading…</div>
+          <div id="workspace-feed-error" class="workspace-feed-error" hidden aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="workspace-chat-col">
+        <div class="workspace-chat-panel">
+          <div id="workspace-chat-messages" class="workspace-chat-messages" role="log" aria-live="polite"></div>
+          <div class="workspace-chat-input-row">
+            <input type="text" id="workspace-chat-input" class="workspace-chat-input" placeholder="Ask about objects or request step-by-step help…" autocomplete="off">
+            <button type="button" id="workspace-chat-send" class="btn-refresh">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
   </section>
 
