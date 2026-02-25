@@ -290,9 +290,14 @@ def _gen_workspace_frames(overlay=False):
         if overlay:
             with _workspace_detection_lock:
                 detections = list(_workspace_latest_detections)
+            current_index = _workspace_current_step_index
+            steps = _workspace_procedure_steps
+            focus_keyword = None
+            if steps and 0 <= current_index < len(steps):
+                focus_keyword = steps[current_index].get("focus_keyword")
             try:
                 from vision_ops import draw_overlay
-                draw_overlay(frame, detections)
+                draw_overlay(frame, detections, current_step_index=current_index if focus_keyword else None, focus_keyword=focus_keyword)
             except Exception:
                 pass
         _, jpeg = cv2.imencode(".jpg", frame)
