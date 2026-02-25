@@ -38,6 +38,12 @@
       loadManufacturers();
       fetchItems(buildInventoryQueryParams());
     }
+    if (tabId === "settings") {
+      loadAiSettings();
+      loadPathSettings();
+      loadAiStatus();
+      loadPathsStatus();
+    }
     if (tabId === "flash") {
       loadFlashPorts(false);
       loadFlashDevices();
@@ -47,6 +53,16 @@
       if (typeof THREE !== "undefined" && !scene3d) init3dPreview();
       if (currentDesign) update3dPreview(currentDesign);
       drawPcbPreview(currentDesign);
+    }
+    if (tabId === "workspace") {
+      loadWorkspaceStream();
+    } else {
+      const feedEl = document.getElementById("workspace-feed");
+      if (feedEl) { feedEl.src = ""; feedEl.classList.remove("workspace-feed-live"); }
+      const ph = document.getElementById("workspace-feed-placeholder");
+      if (ph) { ph.removeAttribute("hidden"); }
+      const errEl = document.getElementById("workspace-feed-error");
+      if (errEl) { errEl.hidden = true; errEl.textContent = ""; }
     }
   }
 
@@ -176,13 +192,13 @@
     const url = queryString ? "/api/items?" + queryString : "/api/items";
     fetch(url)
       .then((r) => {
-        if (!r.ok) throw new Error(r.statusText);
+        if (!r.ok) return r.json().then((j) => { throw new Error(j.error || r.statusText); });
         return r.json();
       })
       .then(renderTable)
       .catch((err) => {
         resultsCount.textContent = "—";
-        tbody.innerHTML = "<tr><td colspan=\"6\">Error: " + escapeHtml(err.message) + "</td></tr>";
+        tbody.innerHTML = "<tr><td colspan=\"6\">" + escapeHtml(err.message) + "</td></tr>";
       });
   }
 
@@ -555,6 +571,7 @@
         if (statusEl) { statusEl.textContent = "Saved."; statusEl.className = "flash-status flash-ok"; }
         if (document.getElementById("settings-api-key-status")) document.getElementById("settings-api-key-status").textContent = data.api_key_set ? "Set" : "Not set";
         if (apiKeyEl) apiKeyEl.value = "";
+        loadAiStatus();
       })
       .catch((err) => {
         if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
@@ -599,6 +616,7 @@
       .then((data) => {
         if (data.error) throw new Error(data.error);
         if (statusEl) { statusEl.textContent = "Saved."; statusEl.className = "flash-status flash-ok"; }
+        loadPathsStatus();
       })
       .catch((err) => {
         if (statusEl) { statusEl.textContent = "Error: " + err.message; statusEl.className = "flash-status flash-error"; }
@@ -606,6 +624,77 @@
   }
 
   document.getElementById("btn-settings-paths-save")?.addEventListener("click", savePathSettings);
+
+  function setStatusBadge(el, status, text) {
+    if (!el) return;
+    el.textContent = text || "—";
+    el.className = "settings-status-badge " + (status === "ok" ? "status-ok" : status === "fail" ? "status-fail" : "status-pending");
+  }
+
+  function loadAiStatus() {
+    const badgeEl = document.getElementById("settings-ai-connection-status");
+    const msgEl = document.getElementById("settings-ai-connection-message");
+    if (badgeEl) badgeEl.textContent = "Checking…";
+    if (badgeEl) badgeEl.className = "settings-status-badge status-pending";
+    if (msgEl) msgEl.textContent = "";
+    fetch("/api/settings/ai/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.connected) {
+          setStatusBadge(badgeEl, "ok", "Connected");
+          if (msgEl) msgEl.textContent = data.message || "";
+        } else if (data.api_key_set) {
+          setStatusBadge(badgeEl, "fail", "Not connected");
+          if (msgEl) msgEl.textContent = data.message || "";
+        } else {
+          setStatusBadge(badgeEl, "fail", "No API key");
+          if (msgEl) msgEl.textContent = "";
+        }
+      })
+      .catch(() => {
+        setStatusBadge(badgeEl, "fail", "Error");
+        if (msgEl) msgEl.textContent = "Could not check status";
+      });
+  }
+
+  function loadPathsStatus() {
+    const ids = {
+      docker: { badge: "settings-docker-status-badge", msg: "settings-docker-status-message" },
+      frontend_path: "settings-frontend-status-badge",
+      backend_path: "settings-backend-status-badge",
+      database_path: "settings-database-status-badge",
+      mcp_server_path: "settings-mcp-status-badge",
+    };
+    [ids.docker.badge, ids.frontend_path, ids.backend_path, ids.database_path, ids.mcp_server_path].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = "Checking…"; el.className = "settings-status-badge status-pending"; }
+    });
+    const dockerMsgEl = document.getElementById(ids.docker.msg);
+    if (dockerMsgEl) dockerMsgEl.textContent = "";
+    fetch("/api/settings/paths/status")
+      .then((r) => r.json())
+      .then((data) => {
+        setStatusBadge(document.getElementById(ids.docker.badge), data.docker_available ? "ok" : "fail", data.docker_available ? "Available" : "Not available");
+        if (dockerMsgEl) dockerMsgEl.textContent = data.docker_message || "";
+        ["frontend_path", "backend_path", "database_path", "mcp_server_path"].forEach((key) => {
+          const p = data.paths && data.paths[key];
+          const el = document.getElementById(key === "frontend_path" ? ids.frontend_path : key === "backend_path" ? ids.backend_path : key === "database_path" ? ids.database_path : ids.mcp_server_path);
+          if (!el) return;
+          if (!p || !p.path) {
+            setStatusBadge(el, "pending", "—");
+            return;
+          }
+          setStatusBadge(el, p.exists ? "ok" : "fail", p.exists ? "OK" : "Missing");
+        });
+      })
+      .catch(() => {
+        setStatusBadge(document.getElementById(ids.docker.badge), "fail", "Error");
+        ["frontend_path", "backend_path", "database_path", "mcp_server_path"].forEach((key) => {
+          const id = key === "frontend_path" ? ids.frontend_path : key === "backend_path" ? ids.backend_path : key === "database_path" ? ids.database_path : ids.mcp_server_path;
+          setStatusBadge(document.getElementById(id), "fail", "Error");
+        });
+      });
+  }
 
   closeDetail.addEventListener("click", () => (detailPanel.hidden = true));
   btnSearch.addEventListener("click", runSearch);
@@ -729,6 +818,129 @@
   }
   const btnDockerContainersRefresh = document.getElementById("btn-docker-containers-refresh");
   if (btnDockerContainersRefresh) btnDockerContainersRefresh.addEventListener("click", loadDockerContainers);
+
+  function loadWorkspaceCameras(selectedId) {
+    const sel = document.getElementById("workspace-camera");
+    if (!sel) return Promise.resolve();
+    return fetch("/api/workspace/cameras")
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.cameras || [];
+        const err = data.error || "";
+        sel.innerHTML = list.length
+          ? list.map((c) => "<option value=\"" + c.id + "\">" + escapeHtml(c.name) + "</option>").join("")
+          : "<option value=\"0\">Camera 0</option>";
+        if (selectedId != null && list.some((c) => String(c.id) === String(selectedId))) sel.value = String(selectedId);
+        if (err && list.length === 0) {
+          const errEl = document.getElementById("workspace-feed-error");
+          if (errEl) { errEl.textContent = err; errEl.hidden = false; }
+        }
+      })
+      .catch(() => {});
+  }
+
+  function loadWorkspaceStream() {
+    const feedEl = document.getElementById("workspace-feed");
+    const placeholderEl = document.getElementById("workspace-feed-placeholder");
+    const errorEl = document.getElementById("workspace-feed-error");
+    const cameraSel = document.getElementById("workspace-camera");
+    if (!feedEl) return;
+    const device = cameraSel ? cameraSel.value || "0" : "0";
+    const streamUrl = "/api/workspace/stream?device=" + encodeURIComponent(device) + "&t=" + Date.now();
+    loadWorkspaceCameras(device);
+    if (placeholderEl) placeholderEl.removeAttribute("hidden");
+    if (errorEl) { errorEl.hidden = true; errorEl.textContent = ""; }
+    feedEl.classList.remove("workspace-feed-live");
+    feedEl.onerror = () => {
+      if (placeholderEl) placeholderEl.setAttribute("hidden", "");
+      feedEl.classList.remove("workspace-feed-live");
+      const fallbackMsg = "Camera stream unavailable. Check that the webcam is connected and opencv-python-headless is installed.";
+      if (errorEl) {
+        errorEl.textContent = fallbackMsg;
+        errorEl.hidden = false;
+      }
+      // Fetch same URL to get 503 JSON and show server message
+      fetch(streamUrl, { credentials: "same-origin" })
+        .then((r) => r.ok ? null : r.json())
+        .then((data) => {
+          if (data && data.error && errorEl) errorEl.textContent = data.error;
+        })
+        .catch(() => {});
+    };
+    feedEl.onload = () => {
+      if (placeholderEl) placeholderEl.setAttribute("hidden", "");
+      if (errorEl) errorEl.hidden = true;
+      feedEl.classList.add("workspace-feed-live");
+    };
+    feedEl.src = streamUrl;
+  }
+
+  const btnWorkspaceRefresh = document.getElementById("btn-workspace-refresh");
+  if (btnWorkspaceRefresh) btnWorkspaceRefresh.addEventListener("click", loadWorkspaceStream);
+  const workspaceCameraSel = document.getElementById("workspace-camera");
+  if (workspaceCameraSel) workspaceCameraSel.addEventListener("change", loadWorkspaceStream);
+
+  function appendWorkspaceChatMessage(role, text) {
+    const container = document.getElementById("workspace-chat-messages");
+    if (!container) return;
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendWorkspaceChat() {
+    const input = document.getElementById("workspace-chat-input");
+    const sendBtn = document.getElementById("workspace-chat-send");
+    const messages = document.getElementById("workspace-chat-messages");
+    if (!input || !messages) return;
+    const message = (input.value || "").trim();
+    if (!message) return;
+    input.value = "";
+    appendWorkspaceChatMessage("user", message);
+    input.disabled = true;
+    if (sendBtn) sendBtn.disabled = true;
+    const placeholder = document.createElement("div");
+    placeholder.className = "msg assistant";
+    placeholder.textContent = "…";
+    placeholder.setAttribute("data-placeholder", "1");
+    messages.appendChild(placeholder);
+    messages.scrollTop = messages.scrollHeight;
+
+    fetch("/api/workspace/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        placeholder.remove();
+        const reply = data.error ? "Error: " + data.error : (data.reply || "");
+        appendWorkspaceChatMessage("assistant", reply);
+        if (data.steps && data.steps.length) {
+          window._workspaceProcedureSteps = data.steps;
+          window._workspaceCurrentStepIndex = 0;
+          if (typeof renderWorkspaceProcedureSteps === "function") renderWorkspaceProcedureSteps();
+        }
+      })
+      .catch((err) => {
+        placeholder.remove();
+        appendWorkspaceChatMessage("assistant", "Request failed: " + (err.message || "unknown"));
+      })
+      .finally(() => {
+        input.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
+        input.focus();
+      });
+  }
+
+  const workspaceChatInput = document.getElementById("workspace-chat-input");
+  const workspaceChatSend = document.getElementById("workspace-chat-send");
+  if (workspaceChatInput) {
+    workspaceChatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); sendWorkspaceChat(); } });
+  }
+  if (workspaceChatSend) workspaceChatSend.addEventListener("click", sendWorkspaceChat);
 
   let lastFlashPorts = [];
   function loadFlashPorts(detect) {
