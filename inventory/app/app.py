@@ -328,6 +328,34 @@ def api_workspace_cameras():
     return jsonify(result)
 
 
+@app.route("/api/workspace/chat", methods=["POST"])
+def api_workspace_chat():
+    """Chat with the lab assistant (OpenAI). Accepts JSON { \"message\": \"...\" }, returns { \"reply\": \"...\" }."""
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "message required", "reply": ""}), 400
+    if not get_openai_api_key():
+        return jsonify({"error": "OpenAI API key required. Set it in Settings.", "reply": ""}), 400
+    try:
+        client = _openai_client()
+        response = client.chat.completions.create(
+            model=get_openai_model(),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a lab assistant for a hardware workspace. The user may ask about objects on the bench or ask for help with a task (e.g. flashing a device, finding a tool). Answer briefly and helpfully.",
+                },
+                {"role": "user", "content": message},
+            ],
+            max_tokens=500,
+        )
+        reply = (response.choices[0].message.content or "").strip()
+        return jsonify({"reply": reply})
+    except Exception as e:
+        return jsonify({"error": str(e)[:200], "reply": ""}), 500
+
+
 @app.route("/api/workspace/detections")
 def api_workspace_detections():
     """Return latest object detections from the workspace camera stream (for chat and overlay)."""
