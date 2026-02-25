@@ -230,6 +230,10 @@ def api_settings_paths_status():
 _workspace_cap = None
 _workspace_cap_device = None
 _workspace_cap_lock = threading.Lock()
+# Latest YOLO detections (updated from stream); used by overlay and chat.
+_workspace_latest_detections = []
+_workspace_detection_lock = threading.Lock()
+_workspace_frame_count = 0
 
 
 def _workspace_ensure_camera(device=0):
@@ -260,6 +264,7 @@ def _workspace_ensure_camera(device=0):
 def _gen_workspace_frames():
     """Yield MJPEG frames from the global camera. Never releases the camera (client disconnect only stops this stream)."""
     import cv2
+    global _workspace_frame_count
     while True:
         with _workspace_cap_lock:
             cap = _workspace_cap
@@ -269,6 +274,16 @@ def _gen_workspace_frames():
             ret, frame = cap.read()
         if not ret:
             break
+        # Run detection every 5th frame to limit CPU; update shared list for overlay and chat
+        _workspace_frame_count += 1
+        if _workspace_frame_count % 5 == 0:
+            try:
+                from vision_ops import run_detection
+                detections = run_detection(frame.copy())
+                with _workspace_detection_lock:
+                    _workspace_latest_detections[:] = detections
+            except Exception:
+                pass
         _, jpeg = cv2.imencode(".jpg", frame)
         if jpeg is not None:
             chunk = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n"
@@ -303,6 +318,14 @@ def api_workspace_cameras():
     except Exception as e:
         result["error"] = str(e)[:200]
     return jsonify(result)
+
+
+@app.route("/api/workspace/detections")
+def api_workspace_detections():
+    """Return latest object detections from the workspace camera stream (for chat and overlay)."""
+    with _workspace_detection_lock:
+        detections = list(_workspace_latest_detections)
+    return jsonify({"detections": detections})
 
 
 @app.route("/api/workspace/stream")
