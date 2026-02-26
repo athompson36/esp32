@@ -4,6 +4,7 @@ Inventory management web app with search, filters, and optional AI query.
 Run from repo root: python inventory/app/app.py
 Then open http://127.0.0.1:5000
 """
+import base64
 import json
 import os
 import re
@@ -239,16 +240,152 @@ _workspace_procedure_steps = []
 _workspace_current_step_index = 0
 
 WORKSPACE_BASELINE_PATH = os.path.join(ARTIFACTS_DIR, "workspace_baseline.json")
+WORKSPACE_REFINED_LABELS_PATH = os.path.join(ARTIFACTS_DIR, "workspace_refined_labels.json")
+WORKSPACE_VISION_LABELS_PATH = os.path.join(ARTIFACTS_DIR, "workspace_vision_labels.json")
+
+# YOLO (COCO) has no "wrench"/"tool" — it can only pick among 80 classes, so it often says "bird".
+# We use the vision API as the primary source of labels: YOLO finds boxes, vision names the object.
+WORKSPACE_SUSPICIOUS_CLASSES = frozenset({
+    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra",
+    "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat", "skateboard",
+})
+# Vision-as-primary: cache key (cx_quant, cy_quant, area_quant) -> label from vision API
+_workspace_vision_labels: dict = {}
+_workspace_refined_labels: dict = {}
+_workspace_refined_lock = threading.Lock()
+
+
+def _workspace_vision_cache_key(d: dict) -> tuple | None:
+    """Stable key for this detection so the same object gets the same vision label. (cx_quant, cy_quant, area_quant)."""
+    bbox = d.get("bbox")
+    if not bbox or len(bbox) != 4:
+        return None
+    x1, y1, x2, y2 = bbox
+    cx = (x1 + x2) // 2
+    cy = (y1 + y2) // 2
+    area = (x2 - x1) * (y2 - y1)
+    return (cx // 25, cy // 25, min(area // 500, 999))
+
+
+def _workspace_load_vision_labels() -> dict:
+    """Load position -> label cache from artifacts (vision API results, persisted)."""
+    try:
+        if os.path.isfile(WORKSPACE_VISION_LABELS_PATH):
+            with open(WORKSPACE_VISION_LABELS_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            raw = data.get("labels") or data
+            out = {}
+            for k, v in raw.items():
+                if not v:
+                    continue
+                try:
+                    key = tuple(json.loads(k)) if isinstance(k, str) and k.startswith("[") else (k if isinstance(k, tuple) else tuple(k))
+                    out[key] = (v or "").strip()
+                except Exception:
+                    pass
+            return out
+    except Exception:
+        pass
+    return {}
+
+
+def _workspace_save_vision_label(key: tuple, label: str) -> None:
+    """Persist one vision label so we remember this object across restarts."""
+    try:
+        os.makedirs(os.path.dirname(WORKSPACE_VISION_LABELS_PATH), exist_ok=True)
+        with _workspace_refined_lock:
+            _workspace_vision_labels[key] = label
+        # JSON keys must be strings
+        labels_dict = {json.dumps(k): v for k, v in _workspace_vision_labels.items()}
+        with open(WORKSPACE_VISION_LABELS_PATH, "w", encoding="utf-8") as f:
+            json.dump({"labels": labels_dict}, f, indent=2)
+    except Exception:
+        pass
+
+
+def _workspace_load_refined_labels() -> dict:
+    """Load yolo_class -> refined_label from artifacts (persisted across restarts)."""
+    try:
+        if os.path.isfile(WORKSPACE_REFINED_LABELS_PATH):
+            with open(WORKSPACE_REFINED_LABELS_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            return {k.strip().lower(): (v or "").strip() for k, v in (data.get("refinements") or data).items() if k and v}
+    except Exception:
+        pass
+    return {}
+
+
+def _workspace_save_refined_label(yolo_class: str, refined_label: str) -> None:
+    """Persist one refinement so we remember it regardless of orientation."""
+    try:
+        os.makedirs(os.path.dirname(WORKSPACE_REFINED_LABELS_PATH), exist_ok=True)
+        with _workspace_refined_lock:
+            _workspace_refined_labels[(yolo_class or "").strip().lower()] = (refined_label or "").strip()
+        data = {"refinements": dict(_workspace_refined_labels)}
+        with open(WORKSPACE_REFINED_LABELS_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+def _workspace_refine_detection_with_vision(frame_bgr, detection) -> str | None:
+    """Use OpenAI vision to get a better label for a detection (e.g. bird → crescent wrench). Returns refined label or None."""
+    try:
+        import cv2
+    except ImportError:
+        return None
+    if not get_openai_api_key():
+        return None
+    bbox = detection.get("bbox")
+    if not bbox or len(bbox) != 4:
+        return None
+    x1, y1, x2, y2 = bbox
+    h, w = frame_bgr.shape[:2]
+    pad = 10
+    x1 = max(0, x1 - pad)
+    y1 = max(0, y1 - pad)
+    x2 = min(w, x2 + pad)
+    y2 = min(h, y2 + pad)
+    if x2 <= x1 or y2 <= y1:
+        return None
+    crop = frame_bgr[y1:y2, x1:x2]
+    _, jpeg = cv2.imencode(".jpg", crop)
+    if jpeg is None:
+        return None
+    b64 = base64.b64encode(jpeg.tobytes()).decode("ascii")
+    try:
+        client = _openai_client()
+        resp = client.chat.completions.create(
+            model=get_openai_model(),
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What is this object? Reply with only one word or a short phrase (e.g. 'crescent wrench', 'screwdriver', 'multimeter'). No punctuation."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                    ],
+                }
+            ],
+            max_tokens=30,
+        )
+        text = (resp.choices[0].message.content or "").strip()
+        return text[:50] if text else None
+    except Exception:
+        return None
 
 
 def _workspace_baseline_classes() -> set:
-    """Return set of class names (lowercase) to filter from detection (always-present items)."""
+    """Return set of class names (lowercase) to filter from detection (always-present items). Excludes suspicious classes (e.g. bird) so misdetected tools are never filtered."""
     try:
         if os.path.isfile(WORKSPACE_BASELINE_PATH):
             with open(WORKSPACE_BASELINE_PATH, encoding="utf-8") as f:
                 data = json.load(f)
             classes = data.get("classes") or []
-            return { (c or "").strip().lower() for c in classes if (c or "").strip() }
+            return {
+                (c or "").strip().lower() for c in classes
+                if (c or "").strip() and (c or "").strip().lower() not in WORKSPACE_SUSPICIOUS_CLASSES
+            }
     except Exception:
         pass
     return set()
@@ -303,13 +440,50 @@ def _gen_workspace_frames(overlay=False, flip_video=True):
         if flip_video:
             # Rotate 180° so upside-down camera feed is right-side up (more reliable than flip on some drivers)
             frame = cv2.rotate(frame, cv2.ROTATE_180)
-        # Run detection every 5th frame to limit CPU; update shared list for overlay and chat
+        # Run detection every 3rd frame so stationary objects (e.g. wrench) get picked up sooner
         _workspace_frame_count += 1
-        if _workspace_frame_count % 5 == 0:
+        if _workspace_frame_count % 3 == 0:
             try:
-                from vision_ops import run_detection
-                detections = run_detection(frame.copy())
+                from vision_ops import (
+                    get_workmat_quad,
+                    map_detections_to_original,
+                    rectify_frame,
+                    run_detection,
+                )
+                h, w = frame.shape[:2]
+                quad = get_workmat_quad(frame)
+                if quad is not None:
+                    rect = rectify_frame(frame, quad)
+                    if rect is not None:
+                        warped, H_inv = rect
+                        detections = run_detection(warped)
+                        detections = map_detections_to_original(detections, H_inv, h, w)
+                    else:
+                        detections = run_detection(frame.copy())
+                else:
+                    detections = run_detection(frame.copy())
                 detections = _workspace_apply_baseline_filter(detections)
+                # Vision as primary label: YOLO finds boxes, vision API names the object (COCO has no "wrench")
+                with _workspace_refined_lock:
+                    if not _workspace_vision_labels:
+                        _workspace_vision_labels.update(_workspace_load_vision_labels())
+                to_ask_vision = None
+                for d in detections:
+                    key = _workspace_vision_cache_key(d)
+                    if key is not None and key in _workspace_vision_labels:
+                        d["class"] = _workspace_vision_labels[key]
+                        continue
+                    cl = (d.get("class") or "").strip().lower()
+                    if cl in WORKSPACE_SUSPICIOUS_CLASSES:
+                        d["class"] = "object"
+                        if to_ask_vision is None and key is not None:
+                            to_ask_vision = (key, d)
+                if to_ask_vision is not None:
+                    key, d = to_ask_vision
+                    label = _workspace_refine_detection_with_vision(frame, d)
+                    if label:
+                        _workspace_save_vision_label(key, label)
+                        d["class"] = label
                 with _workspace_detection_lock:
                     _workspace_latest_detections[:] = detections
             except Exception:
@@ -503,7 +677,11 @@ def api_workspace_calibrate():
         raw = run_detection(frame.copy())
     except Exception as e:
         return jsonify({"error": str(e)[:200]}), 500
-    classes = sorted({(d.get("class") or "").strip() for d in raw if (d.get("class") or "").strip()})
+    # Exclude suspicious YOLO classes (e.g. bird) so misdetections like wrench→bird never become baseline
+    classes = sorted(
+        (c for c in {(d.get("class") or "").strip() for d in raw if (d.get("class") or "").strip()}
+         if c.lower() not in WORKSPACE_SUSPICIOUS_CLASSES)
+    )
     try:
         os.makedirs(os.path.dirname(WORKSPACE_BASELINE_PATH), exist_ok=True)
         with open(WORKSPACE_BASELINE_PATH, "w", encoding="utf-8") as f:
