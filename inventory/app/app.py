@@ -264,8 +264,8 @@ def _workspace_ensure_camera(device=0):
         return True, _workspace_cap
 
 
-def _gen_workspace_frames(overlay=False):
-    """Yield MJPEG frames from the global camera. If overlay is True, draw detection boxes and labels."""
+def _gen_workspace_frames(overlay=False, flip_video=True):
+    """Yield MJPEG frames from the global camera. If overlay is True, draw detection boxes and labels. If flip_video, flip so feed is right-side up."""
     import cv2
     global _workspace_frame_count
     while True:
@@ -277,6 +277,9 @@ def _gen_workspace_frames(overlay=False):
             ret, frame = cap.read()
         if not ret:
             break
+        if flip_video:
+            # Rotate 180° so upside-down camera feed is right-side up (more reliable than flip on some drivers)
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
         # Run detection every 5th frame to limit CPU; update shared list for overlay and chat
         _workspace_frame_count += 1
         if _workspace_frame_count % 5 == 0:
@@ -361,7 +364,11 @@ def api_workspace_chat():
             conn = get_db()
             if conn:
                 # Search by message words or detection classes
-                q = message.strip()[:50].replace("?", "").strip() or (", ".join([d.get("class", "") for d in detections[:5]) if detections else "board tool")
+                q = message.strip()[:50].replace("?", "").strip()
+                if not q and detections:
+                    q = ", ".join(d.get("class", "") for d in detections[:5])
+                if not q:
+                    q = "board tool"
                 pattern = f"%{q}%"
                 cur = conn.execute(
                     "SELECT id, name, category FROM items WHERE (name LIKE ? OR part_number LIKE ? OR notes LIKE ?) LIMIT 3",
@@ -447,9 +454,10 @@ def api_workspace_detections():
 
 @app.route("/api/workspace/stream")
 def api_workspace_stream():
-    """MJPEG stream from server webcam. ?overlay=1 draws detection boxes and labels."""
+    """MJPEG stream from server webcam. ?overlay=1 draws detection boxes; ?flip=1 (default) flips video right-side up."""
     device = int(request.args.get("device", 0))
     overlay = request.args.get("overlay", "0") == "1"
+    flip_video = request.args.get("flip", "1") == "1"
     try:
         import cv2
     except ImportError:
@@ -458,7 +466,7 @@ def api_workspace_stream():
     if not ok:
         return jsonify({"error": "No camera found at device " + str(device)}), 503
     return Response(
-        stream_with_context(_gen_workspace_frames(overlay=overlay)),
+        stream_with_context(_gen_workspace_frames(overlay=overlay, flip_video=flip_video)),
         mimetype="multipart/x-mixed-replace; boundary=frame",
     )
 

@@ -5,8 +5,11 @@
 #   - /dev/ttyUSB0:/dev/ttyUSB0
 #   - /dev/ttyACM0:/dev/ttyACM0
 # The deploy script can generate an override that includes only existing devices.
+# group_add: ["44"] = host's "video" group so the container can open /dev/video0.
 
 services:
   web:
+    group_add:
+      - "44"
     devices:
       - /dev/video0:/dev/video0

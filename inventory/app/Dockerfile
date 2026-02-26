@@ -3,9 +3,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Docker CLI so the app can talk to the host daemon when socket is mounted (docker version, ps, start/stop)
+# Docker CLI + OpenCV runtime libs (headless cv2 can still need libGL in some builds)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl gnupg \
+    ca-certificates curl gnupg libgl1 libglib2.0-0 libxcb1 \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
     && chmod 644 /etc/apt/keyrings/docker.asc \
@@ -14,12 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Dependencies
+# Dependencies: install CPU-only torch first so ultralytics does not pull CUDA (saves ~6GB and avoids disk full)
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# App code (config, routes, updates, flash_ops, project_ops, project_templates, map_ops, device_ops, debug_ops, config_wizard_ops, device_catalog, static, templates)
-COPY config.py app.py updates.py flash_ops.py project_ops.py project_templates.py map_ops.py device_ops.py debug_ops.py config_wizard_ops.py device_catalog.json ./
+# App code (config, routes, vision_ops, …)
+COPY config.py app.py updates.py flash_ops.py project_ops.py project_templates.py map_ops.py device_ops.py debug_ops.py config_wizard_ops.py vision_ops.py device_catalog.json ./
 COPY static/ static/
 COPY templates/ templates/
 
